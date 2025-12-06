@@ -1,0 +1,68 @@
+class Config:
+    # ===== WINDOW & RENDERING =====
+    SCREENWIDTH = 500
+    SCREENHEIGHT = 500
+    FPS = 60
+    BACKGROUND_COLOR = (255, 255, 255)
+    GRID_LINE_COLOR = (0, 0, 0)
+    SHOW_GRID_LINES = False  # Toggle grid visualization
+    
+    # ===== GRID =====
+    CELL_SIZE = 5
+    # Derived values (will be calculated)
+    # GRID_COLS = SCREENWIDTH // CELL_SIZE
+    # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
+    
+    # ===== ANT COLONY =====
+    NUM_ANTS = 100
+    NEST_COL = None  # Will be set to grid center
+    NEST_ROW = None
+    
+    # ===== ANT BEHAVIOR =====
+    ANT_SPEED = 1  # Cells per frame when moving
+    ANT_VISION_RANGE = 3  # Cells (for future sensing)
+    ANT_TURN_PROBABILITY = 0.1  # For random movement phase
+    ANT_COLOR = (0, 0, 0)  # White
+    ANT_WITH_FOOD_COLOR = (0, 255, 0)  # Green
+    
+    # ===== ACO PARAMETERS =====
+    # These control the ACO probability formula: (pheromone^ALPHA) * (heuristic^BETA)
+    ALPHA = 1.0  # Pheromone importance
+    BETA = 2.0   # Heuristic importance
+    EVAPORATION_RATE = 0.05  # Pheromone evaporation per frame
+    DIFFUSION_RATE = 0.1    # Pheromone spread to neighbors
+    
+    # ===== PHEROMONE SETTINGS =====
+    PHEROMONE_DROP_STRENGTH = 10.0
+    PHEROMONE_MAX_STRENGTH = 100.0
+    TO_FOOD_PHEROMONE_COLOR = (255, 0, 0)    # RED
+    TO_NEST_PHEROMONE_COLOR = (0, 0, 255)  # BLUE
+    
+    # ===== FOOD SETTINGS =====
+    INITIAL_FOOD_SOURCES = 5
+    FOOD_PER_SOURCE = 50
+    FOOD_COLOR = (255, 255, 0)  # YELLOW
+    FOOD_RESPAWN = True
+    
+    # ===== OBSTACLES =====
+    OBSTACLE_DENSITY = 0.05  # 5% of cells
+    OBSTACLE_COLOR = (80, 80, 80)
+    
+    # ===== VISUALIZATION =====
+    DRAW_PHEROMONES = True
+    DRAW_HEATMAP = False  # Visualize heuristic values
+    ANT_SIZE_FACTOR = 0.7  # Relative to cell size (0.0-1.0)
+    
+    # ===== DEBUG =====
+    PRINT_STATS_EVERY = 100  # Frames (0 to disable)
+    DRAW_ANT_VISION = False
+    DRAW_PATH_DEBUG = False
+    
+    @classmethod
+    def calculate_derived(cls):
+        """Calculate values that depend on other configs."""
+        cls.GRID_COLS = cls.SCREENWIDTH // cls.CELL_SIZE
+        cls.GRID_ROWS = cls.SCREENHEIGHT // cls.CELL_SIZE
+        cls.NEST_COL = cls.GRID_COLS // 2
+        cls.NEST_ROW = cls.GRID_ROWS // 2
+        cls.ANT_RADIUS = int(cls.CELL_SIZE * cls.ANT_SIZE_FACTOR / 2)
