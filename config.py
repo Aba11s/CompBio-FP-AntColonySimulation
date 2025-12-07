@@ -2,24 +2,24 @@ class Config:
     # ===== WINDOW & RENDERING =====
     SCREENWIDTH = 500
     SCREENHEIGHT = 500
-    FPS = 30
+    FPS = 60
     BACKGROUND_COLOR = (255, 255, 255)
-    GRID_LINE_COLOR = (0, 0, 0)
+    GRID_LINE_COLOR = (150, 150, 150)
     SHOW_GRID_LINES = True  # Toggle grid visualization
     
     # ===== GRID =====
-    CELL_SIZE = 50
+    CELL_SIZE = 5
     # Derived values (will be calculated)
     # GRID_COLS = SCREENWIDTH // CELL_SIZE
     # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
     
     # ===== ANT COLONY =====
-    NUM_ANTS = 5  # Few ants for testing
+    NUM_ANTS = 1000  # Few ants for testing
     NEST_COL = None
     NEST_ROW = None
 
     # ===== FOOD SETTINGS =====
-    INITIAL_FOOD_CLUSTERS = 1
+    INITIAL_FOOD_CLUSTERS = 2
     FOOD_CLUSTER_RADIUS = 5
     FOOD_CLUSTER_DENSITY = 0.7
     FOOD_PER_CELL = 2
@@ -27,8 +27,8 @@ class Config:
     
     # ===== FOOD FOR TESTING =====
     TEST_FOOD_POSITIONS = [
-        (1, 1)  # Food cluster 1
-         # Food cluster 2
+        (2, 2),  # Food cluster 1
+        (80,80)# Food cluster 2
           # Food cluster 3
     ]
     

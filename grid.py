@@ -191,7 +191,7 @@ class Grid:
             return self.get_heuristic_to_food(grid_col, grid_row)
         
     # HEURISTIC UPDATE METHODS - UPDATED
-    def update_heuristic_to_food(self):
+    def update_heuristic_to_food(self, gradient_softness=0.1):
         """
         Update food heuristic grid based on all food clusters.
         Uses sum of attractions from all food sources.
@@ -225,15 +225,15 @@ class Grid:
                     # Only consider clusters within influence range (3x radius)
                     influence_radius = cluster.radius * 3
                     if distance <= influence_radius:
-                        # Calculate attraction: cluster density / (1 + distance)
+                        # Calculate attraction: cluster density / (1 + distance * gradient_softness)
                         cluster_density = cluster.total_food / (cluster.radius * cluster.radius)
-                        attraction = cluster_density / (1.0 + distance)
+                        attraction = cluster_density / (1.0 + distance * gradient_softness)
                         total_attraction += attraction
                 
                 self.heuristic_to_food[row][col] = total_attraction
 
     
-    def update_heuristic_to_nest(self, target_col=None, target_row=None):
+    def update_heuristic_to_nest(self, target_col=None, target_row=None, gradient_softness=0.25):
         """
         Update nest heuristic grid based on nest position.
         If target is provided, use it; otherwise use self.nest_position.
@@ -260,8 +260,8 @@ class Grid:
                 straight_moves = abs(dx - dy)
                 distance = (diagonal_moves * 1.414) + straight_moves
                 
-                # ACO heuristic: η = 1/(1+distance)
-                self.heuristic_to_nest[row][col] = 1.0 / (1.0 + distance)
+                # ACO heuristic: η = 1/(1+distance*gradient_softness)
+                self.heuristic_to_nest[row][col] = 1.0 / (1.0 + distance * gradient_softness)
 
 
     # Utility Method (Private)

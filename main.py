@@ -31,14 +31,19 @@ class AntSimulation:
         
         # Create ants at the nest position
         self.ants = []
-        """for _ in range(Config.NUM_ANTS):
+        for _ in range(Config.NUM_ANTS):
             ant = Ant(self.grid, Config.NEST_COL, Config.NEST_ROW)
-            self.ants.append(ant)"""
+            self.ants.append(ant)
+
+        # Ant movement mode 
+        self.movement_mode = "heuristic"
         
         # State
         self.frame_count = 0
         self.running = True
         self.paused = False
+
+
     
     def setup_test_environment(self):
         """Setup nest position and food for testing."""
@@ -145,18 +150,45 @@ class AntSimulation:
     
     def update(self):
         """Update simulation state."""
-        # Move all ants randomly (for now)
+        total_heuristic = 0
+        ants_at_food = 0
+        
         for ant in self.ants:
-            ant.move_random()
+            if self.movement_mode == "heuristic":
+                ant.move_with_heuristic()
+            else:
+                ant.move_random()
+            
+            # Track stats
+            heuristic = ant.get_current_heuristic()
+            total_heuristic += heuristic
+            if heuristic > 2.0:  # Near food
+                ants_at_food += 1
         
         # Update frame counter
         self.frame_count += 1
         
         # Print debug info periodically
         if Config.PRINT_STATS_EVERY > 0 and self.frame_count % Config.PRINT_STATS_EVERY == 0:
-            print(f"\n=== Frame {self.frame_count} ===")
-            ants_with_food = sum(1 for ant in self.ants if ant.has_food)
-            print(f"Ants with food: {ants_with_food}/{len(self.ants)}")
+            self.print_movement_stats(total_heuristic, ants_at_food)
+
+    def print_movement_stats(self, total_heuristic, ants_at_food):
+        """Print movement statistics."""
+        avg_heuristic = total_heuristic / len(self.ants) if self.ants else 0
+        
+        print(f"\n=== Frame {self.frame_count} ({self.movement_mode} movement) ===")
+        print(f"Average food heuristic: {avg_heuristic:.3f} (max possible: ~2.4)")
+        print(f"Ants near food (heuristic > 2.0): {ants_at_food}/{len(self.ants)}")
+        
+        # Progress indicator
+        if avg_heuristic > 2.0:
+            print("✅ Excellent: Most ants at food!")
+        elif avg_heuristic > 1.5:
+            print("⚠️ Good: Ants moving toward food")
+        elif avg_heuristic > 1.0:
+            print("↗️ Fair: Some progress")
+        else:
+            print("⏳ Poor: Ants not finding food")
     
     # Add a key handler to print heuristics on demand
     def handle_events(self):
@@ -186,29 +218,70 @@ class AntSimulation:
                     # Toggle pause
                     self.paused = not self.paused
                     print(f"\n✓ Simulation {'PAUSED' if self.paused else 'RUNNING'}")
+
+                # NEW KEYS
+                elif event.key == pygame.K_1:
+                    # Switch to heuristic movement
+                    self.movement_mode = "heuristic"
+                    print(f"\n✓ Movement: HEURISTIC (β={Config.BETA})")
+                    print("Ants should move toward food clusters")
+                elif event.key == pygame.K_2:
+                    # Switch to random movement
+                    self.movement_mode = "random"
+                    print(f"\n✓ Movement: RANDOM")
+                    print("Ants move randomly for comparison")
+                elif event.key == pygame.K_d:
+                    # Print debug info for first ant
+                    if self.ants:
+                        info = self.ants[0].get_debug_info()
+                        print(f"\n=== Ant 0 Debug ===")
+                        print(f"Position: {info['position']}")
+                        print(f"Steps taken: {info['steps']}")
+                        print(f"Current food heuristic: {info['heuristic']:.3f}")
+                        print(f"At food cluster: {info['at_food']}")
     
     # Update HUD to show controls
     def _draw_hud(self):
         """Draw heads-up display."""
         font = pygame.font.Font(None, 24)
         
-        # Show FPS, ant count, and controls
-        fps_text = f"FPS: {int(self.clock.get_fps())} | Ants: {len(self.ants)}"
+        # Calculate current average heuristic
+        avg_heuristic = 0
+        if self.ants:
+            total = sum(ant.get_current_heuristic() for ant in self.ants)
+            avg_heuristic = total / len(self.ants)
+        
+        # Show FPS, mode, and stats
+        mode_text = f"Mode: {self.movement_mode.upper()}"
+        if self.movement_mode == "heuristic":
+            mode_text += f" (β={Config.BETA})"
+        
+        stats_text = f"FPS: {int(self.clock.get_fps())} | "
+        stats_text += f"Ants: {len(self.ants)} | "
+        stats_text += f"Avg Heuristic: {avg_heuristic:.2f}/2.4"
+        
         if self.paused:
-            fps_text += " | PAUSED"
+            stats_text += " | PAUSED"
         
-        text_surface = font.render(fps_text, True, (0, 0, 0))
-        self.screen.blit(text_surface, (10, 10))
+        mode_surface = font.render(mode_text, True, (0, 0, 0))
+        stats_surface = font.render(stats_text, True, (0, 0, 0))
         
-        # Show controls help
+        self.screen.blit(mode_surface, (10, 10))
+        self.screen.blit(stats_surface, (10, 40))
+        
+        # Update controls help
         controls = [
-            "Controls: F=Food Heuristics, N=Nest Heuristics",
-            "H=Local Heuristics, R=Reset Ants, SPACE=Pause"
+            "Controls: 1=Heuristic  2=Random  R=Reset  D=Debug",
+            "F=Food heuristics  N=Nest heuristics  SPACE=Pause  ESC=Quit"
         ]
         
         for i, text in enumerate(controls):
             control_surface = font.render(text, True, (100, 100, 100))
-            self.screen.blit(control_surface, (10, 40 + i * 25))
+            self.screen.blit(control_surface, (10, 70 + i * 25))
+            
+            for i, text in enumerate(controls):
+                control_surface = font.render(text, True, (100, 100, 100))
+                self.screen.blit(control_surface, (10, 40 + i * 25))
 
     def _draw_grid_lines(self):
         """Draw grid lines for visualization."""
