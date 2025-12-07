@@ -191,7 +191,7 @@ class Grid:
             return self.get_heuristic_to_food(grid_col, grid_row)
         
     # HEURISTIC UPDATE METHODS - UPDATED
-    def update_heuristic_to_food(self, gradient_softness=0.1):
+    def update_heuristic_to_food(self, gradient_softness=0.05):
         """
         Update food heuristic grid based on all food clusters.
         Uses sum of attractions from all food sources.
@@ -222,8 +222,8 @@ class Grid:
                     dy = row - cluster.grid_y
                     distance = math.sqrt(dx*dx + dy*dy)
                     
-                    # Only consider clusters within influence range (3x radius)
-                    influence_radius = cluster.radius * 3
+                    # Only consider clusters within influence range (4x radius)
+                    influence_radius = cluster.radius * 4
                     if distance <= influence_radius:
                         # Calculate attraction: cluster density / (1 + distance * gradient_softness)
                         cluster_density = cluster.total_food / (cluster.radius * cluster.radius)

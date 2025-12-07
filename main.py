@@ -62,7 +62,8 @@ class AntSimulation:
                 grid_y=food_row,
                 radius=Config.FOOD_CLUSTER_RADIUS,
                 density=Config.FOOD_CLUSTER_DENSITY,
-                food_per_cell=Config.FOOD_PER_CELL
+                food_per_cell=Config.FOOD_PER_CELL,
+                influence_radius_multiplier=Config.FOOD_CLUSTER_INFLUENCE_RADIUS_MULT
             )
             print(f"✓ Food cluster {i} at ({food_col}, {food_row}) "
                   f"radius={Config.FOOD_CLUSTER_RADIUS}, "
@@ -240,48 +241,15 @@ class AntSimulation:
                         print(f"Current food heuristic: {info['heuristic']:.3f}")
                         print(f"At food cluster: {info['at_food']}")
     
-    # Update HUD to show controls
+    # Update HUD to show only FPS
     def _draw_hud(self):
-        """Draw heads-up display."""
+        """Draw heads-up display - only FPS."""
         font = pygame.font.Font(None, 24)
         
-        # Calculate current average heuristic
-        avg_heuristic = 0
-        if self.ants:
-            total = sum(ant.get_current_heuristic() for ant in self.ants)
-            avg_heuristic = total / len(self.ants)
-        
-        # Show FPS, mode, and stats
-        mode_text = f"Mode: {self.movement_mode.upper()}"
-        if self.movement_mode == "heuristic":
-            mode_text += f" (β={Config.BETA})"
-        
-        stats_text = f"FPS: {int(self.clock.get_fps())} | "
-        stats_text += f"Ants: {len(self.ants)} | "
-        stats_text += f"Avg Heuristic: {avg_heuristic:.2f}/2.4"
-        
-        if self.paused:
-            stats_text += " | PAUSED"
-        
-        mode_surface = font.render(mode_text, True, (0, 0, 0))
-        stats_surface = font.render(stats_text, True, (0, 0, 0))
-        
-        self.screen.blit(mode_surface, (10, 10))
-        self.screen.blit(stats_surface, (10, 40))
-        
-        # Update controls help
-        controls = [
-            "Controls: 1=Heuristic  2=Random  R=Reset  D=Debug",
-            "F=Food heuristics  N=Nest heuristics  SPACE=Pause  ESC=Quit"
-        ]
-        
-        for i, text in enumerate(controls):
-            control_surface = font.render(text, True, (100, 100, 100))
-            self.screen.blit(control_surface, (10, 70 + i * 25))
-            
-            for i, text in enumerate(controls):
-                control_surface = font.render(text, True, (100, 100, 100))
-                self.screen.blit(control_surface, (10, 40 + i * 25))
+        # Show FPS only
+        fps_text = f"FPS: {int(self.clock.get_fps())}"
+        fps_surface = font.render(fps_text, True, (0, 0, 0))
+        self.screen.blit(fps_surface, (10, 10))
 
     def _draw_grid_lines(self):
         """Draw grid lines for visualization."""
@@ -326,7 +294,7 @@ class AntSimulation:
         for ant in self.ants:
             ant.draw(self.screen, Config.ANT_COLOR)
         
-        # Draw HUD
+        # Draw HUD (only FPS)
         self._draw_hud()
         
         # Update display

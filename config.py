@@ -14,21 +14,22 @@ class Config:
     # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
     
     # ===== ANT COLONY =====
-    NUM_ANTS = 1000  # Few ants for testing
+    NUM_ANTS = 10  # Few ants for testing
     NEST_COL = None
     NEST_ROW = None
 
     # ===== FOOD SETTINGS =====
-    INITIAL_FOOD_CLUSTERS = 2
-    FOOD_CLUSTER_RADIUS = 5
-    FOOD_CLUSTER_DENSITY = 0.7
-    FOOD_PER_CELL = 2
+    INITIAL_FOOD_CLUSTERS = 1
+    FOOD_CLUSTER_RADIUS = 10
+    FOOD_CLUSTER_DENSITY = 0.5
+    FOOD_PER_CELL = 10
+    FOOD_CLUSTER_INFLUENCE_RADIUS_MULT = 5
     FOOD_COLOR = (0, 180, 0)  # Green
     
     # ===== FOOD FOR TESTING =====
     TEST_FOOD_POSITIONS = [
-        (2, 2),  # Food cluster 1
-        (80,80)# Food cluster 2
+        (10, 10)  # Food cluster 1
+        # Food cluster 2
           # Food cluster 3
     ]
     
