@@ -2,21 +2,35 @@ class Config:
     # ===== WINDOW & RENDERING =====
     SCREENWIDTH = 500
     SCREENHEIGHT = 500
-    FPS = 60
+    FPS = 30
     BACKGROUND_COLOR = (255, 255, 255)
     GRID_LINE_COLOR = (0, 0, 0)
-    SHOW_GRID_LINES = False  # Toggle grid visualization
+    SHOW_GRID_LINES = True  # Toggle grid visualization
     
     # ===== GRID =====
-    CELL_SIZE = 5
+    CELL_SIZE = 50
     # Derived values (will be calculated)
     # GRID_COLS = SCREENWIDTH // CELL_SIZE
     # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
     
     # ===== ANT COLONY =====
-    NUM_ANTS = 100
-    NEST_COL = None  # Will be set to grid center
+    NUM_ANTS = 5  # Few ants for testing
+    NEST_COL = None
     NEST_ROW = None
+
+    # ===== FOOD SETTINGS =====
+    INITIAL_FOOD_CLUSTERS = 1
+    FOOD_CLUSTER_RADIUS = 5
+    FOOD_CLUSTER_DENSITY = 0.7
+    FOOD_PER_CELL = 2
+    FOOD_COLOR = (0, 180, 0)  # Green
+    
+    # ===== FOOD FOR TESTING =====
+    TEST_FOOD_POSITIONS = [
+        (1, 1)  # Food cluster 1
+         # Food cluster 2
+          # Food cluster 3
+    ]
     
     # ===== ANT BEHAVIOR =====
     ANT_SPEED = 1  # Cells per frame when moving
@@ -65,4 +79,14 @@ class Config:
         cls.GRID_ROWS = cls.SCREENHEIGHT // cls.CELL_SIZE
         cls.NEST_COL = cls.GRID_COLS // 2
         cls.NEST_ROW = cls.GRID_ROWS // 2
-        cls.ANT_RADIUS = int(cls.CELL_SIZE * cls.ANT_SIZE_FACTOR / 2)
+        print(f"Grid: {cls.GRID_COLS} x {cls.GRID_ROWS} cells")
+        print(f"Nest at: ({cls.NEST_COL}, {cls.NEST_ROW})")
+
+
+# Add to Config:
+class Debug:
+    ENABLED = True
+    DRAW_ANT_IDS = False
+    DRAW_PHEROMONE_VALUES = False
+    DRAW_HEURISTIC_VALUES = False
+    LOG_MOVEMENT = False

@@ -26,11 +26,22 @@ class Ant:
             row = random.randint(0, self.grid.rows - 1)
             if not self.grid.obstacles[row][col]:
                 return col, row
+            
+    def move_aco(self):
+        """
+        Probablistic Move based on
+        """
+
+    def move_with_heursitic(self):
+        """
+        Probablistic move with cell heuristics
+        """
     
     def move_random(self):
         """
         Move to a random neighboring cell (8 directions).
         Returns True if moved, False if stuck.
+        For testing only.
         """
         # Get all possible neighbors
         neighbors = []
