@@ -1,6 +1,7 @@
 import random
 import math
 import pygame
+
 from config import Config
 
 class Ant:
@@ -116,7 +117,10 @@ class Ant:
             self.heading = (dx, dy)
     
     def move_random(self):
-        """Random movement accounting for diagonal distances."""
+        """
+        Random movement accounting for diagonal distances.
+        LEGACY CODE, FOR TESTING ONLY
+        """
         # Get neighbors with distances
         weighted_neighbors = self._get_allowed_neighbors()
         
@@ -160,128 +164,46 @@ class Ant:
         
         return True
  
-    def move_with_heuristic(self, explore_chance=0.5, debug=False):
-        """
-        Heuristic movement with EXPONENTIAL scaling.
-        Probability ∝ exp(heuristic/temperature) / distance
-
-        LEGACY CODE: keep just in case
-        """
+    def move_with_heuristic(self, explore_chance=0.1, temperature=0.02):
+        """Minimal heuristic movement with food pickup/dropoff."""
+        
+        #print(self.has_food)
+        # FIRST: Drop food if at nest
+        if self.has_food:
+            self._drop_food()
+        
+        # SECOND: Pick up food if available (only if not carrying)
+        if not self.has_food:
+            self._pickup_food()
+        
+        # THIRD: Move based on current state
         if random.random() < explore_chance:
             return self.move_random()
         
-        weighted_neighbors = self._get_allowed_neighbors()
-        
-        if not weighted_neighbors:
-            all_neighbors = self._get_valid_neighbors()
-            if not all_neighbors:
-                return False
-            
-            weighted_neighbors = []
-            for nc, nr, dx, dy in all_neighbors:
-                distance = math.sqrt(dx*dx + dy*dy)
-                weighted_neighbors.append((nc, nr, distance))
-        
-        positions = []
-        distances = []
-        probabilities = []
-        heuristic_values = []
-        
-        # COLLECT ALL DATA FIRST
-        for nc, nr, distance in weighted_neighbors:
-            heuristic = self.grid.get_heuristic_to_food(nc, nr)
-            heuristic_values.append(heuristic)
-            positions.append((nc, nr))
-            distances.append(distance)
-        
-        if debug:
-            print(f"  Available positions: {positions}")
-            print(f"  Heuristics: {[f'{h:.3f}' for h in heuristic_values]}")
-        
-        # FIND MIN/MAX FOR NORMALIZATION
-        min_h = min(heuristic_values)
-        max_h = max(heuristic_values)
-        
-        # If all heuristics are similar, fall back to random
-        if max_h - min_h < 0.01:
-            if debug:
-                print("  All heuristics similar, falling back to random")
-            chosen_idx = random.randint(0, len(positions) - 1)
-        else:
-            # NORMALIZE to 0-1 range
-            normalized_heuristics = []
-            for h in heuristic_values:
-                norm = (h - min_h) / (max_h - min_h)
-                normalized_heuristics.append(norm)
-            
-            # EXPONENTIAL SCALING with temperature
-            temperature = 0.3  # Lower = more extreme probabilities
-            for i, (norm_h, distance) in enumerate(zip(normalized_heuristics, distances)):
-                # Exponential: exp(norm_h / temperature)
-                # This amplifies small differences dramatically!
-                exponent = norm_h / temperature
-                # Cap exponent to avoid overflow
-                exponent = min(exponent, 10)
-                
-                probability = math.exp(exponent) / distance if distance > 0 else 0.001
-                probabilities.append(max(0.001, probability))
-            
-            if debug:
-                print(f"  Normalized heuristics: {[f'{h:.3f}' for h in normalized_heuristics]}")
-                print(f"  Probabilities: {[f'{p:.3f}' for p in probabilities]}")
-                max_idx = probabilities.index(max(probabilities))
-                min_idx = probabilities.index(min(probabilities))
-                print(f"  Max prob: {probabilities[max_idx]:.3f} at {positions[max_idx]} (heuristic={heuristic_values[max_idx]:.3f})")
-                print(f"  Min prob: {probabilities[min_idx]:.3f} at {positions[min_idx]} (heuristic={heuristic_values[min_idx]:.3f})")
-                print(f"  Ratio max/min: {probabilities[max_idx]/probabilities[min_idx]:.2f}x")
-            
-            total = sum(probabilities)
-            if total <= 0:
-                chosen_idx = random.randint(0, len(positions) - 1)
-            else:
-                normalized = [p/total for p in probabilities]
-                chosen_idx = random.choices(range(len(positions)), weights=normalized, k=1)[0]
-        
-        if debug:
-            print(f"  Chose: {positions[chosen_idx]} (heuristic={heuristic_values[chosen_idx]:.3f})")
-        
-        old_col, old_row = self.col, self.row
-        self.col, self.row = positions[chosen_idx]
-        distance = distances[chosen_idx]
-        
-        self.distance_traveled += distance
-        self.steps_taken += 1
-        self.path.append((self.col, self.row))
-        
-        dx = self.col - old_col
-        dy = self.row - old_row
-        if dx != 0 or dy != 0:
-            self.heading = (dx, dy)
-        
-        return True
-    
-    def move_with_heuristic(self, explore_chance=0.1, temperature=0.1):
-        """Minimal heuristic movement - just the essentials."""
-        if random.random() < explore_chance:
-            return self.move_random()
-        
-        # Get moves with (col, row, distance)
+        # Get valid moves
         moves = self._get_allowed_neighbors()
         if not moves:
-            # Fallback
             moves = [(nc, nr, math.sqrt(dx*dx + dy*dy)) 
                     for nc, nr, dx, dy in self._get_valid_neighbors()]
         
         if not moves:
             return False
         
-        # Calculate probabilities
-        probs = []
-        for col, row, dist in moves:
-            h = self.grid.get_heuristic_to_food(col, row)
-            probs.append(math.exp(h / temperature) / max(dist, 0.001))
+        # Choose heuristic based on food state
+        if self.has_food:
+            # Follow nest heuristic back to nest
+            probs = []
+            for col, row, dist in moves:
+                h = self.grid.get_heuristic_to_nest(col, row)  # NEST heuristic!
+                probs.append(math.exp(h / temperature) / max(dist, 0.001))
+        else:
+            # Follow food heuristic to find food
+            probs = []
+            for col, row, dist in moves:
+                h = self.grid.get_heuristic_to_food(col, row)  # FOOD heuristic!
+                probs.append(math.exp(h / temperature) / max(dist, 0.001))
         
-        # Choose and move
+        # Choose and move (same as before)
         idx = random.choices(range(len(moves)), weights=probs, k=1)[0]
         col, row, dist = moves[idx]
         
@@ -291,7 +213,7 @@ class Ant:
         self.steps_taken += 1
         self.path.append((col, row))
         
-        # Update heading (simplified)
+        # Update heading
         if len(self.path) >= 2:
             prev = self.path[-2]
             dx, dy = col - prev[0], row - prev[1]
@@ -322,20 +244,42 @@ class Ant:
             'heading': self.heading
         }
     
-    def _get_direction_name(self, dx, dy):
-        """Convert direction vector to readable name."""
-        if dx == -1 and dy == -1: return "UP-LEFT"
-        if dx == 0 and dy == -1: return "UP"
-        if dx == 1 and dy == -1: return "UP-RIGHT"
-        if dx == -1 and dy == 0: return "LEFT"
-        if dx == 1 and dy == 0: return "RIGHT"
-        if dx == -1 and dy == 1: return "DOWN-LEFT"
-        if dx == 0 and dy == 1: return "DOWN"
-        if dx == 1 and dy == 1: return "DOWN-RIGHT"
-        return "STAY"
+    def _pickup_food(self):
+        """Try to pick up food from current cell."""
+        if not self.has_food and self.grid.has_food(self.col, self.row):
+            # Find which cluster has food here
+            for cluster in self.grid.food_clusters:
+                if (self.col, self.row) in cluster.food_cells:
+                    if cluster.take_food(self.col, self.row) > 0:
+                        self.has_food = True
+                        #print(f"✓ Ant picked up food at ({self.col}, {self.row})")  # Optional debug
+                        return True
+        return False
     
-    def draw(self, surface, color=(0, 0, 0)):
+    def _drop_food(self):
+        """Drop food at nest."""
+        if self.has_food and self._at_nest():
+            self.has_food = False
+            # Optionally track total food collected
+            #print(f"✓ Ant delivered food to nest")  # Optional debug
+            return True
+        return False
+
+    def _at_nest(self):
+        """Check if ant is at nest."""
+        return self.grid.nest_position == (self.col, self.row)
+    
+
+
+
+    ########### DRAW #############
+
+    def draw(self, surface, color=None):
         """Draw the ant as a filled grid cell."""
+        if color is None:
+            # Change color when carrying food
+            color = Config.ANT_WITH_FOOD_COLOR if self.has_food else Config.ANT_COLOR
+        
         # Get the top-left corner of the cell
         x, y = self.grid.grid_to_world(self.col, self.row)
         
@@ -349,18 +293,3 @@ class Ant:
         
         # Draw the ant as a filled rectangle
         pygame.draw.rect(surface, color, cell_rect)
-        
-        # Draw heading indicator (optional, for debugging)
-        if self.heading:
-            center_x = x + self.grid.cell_size // 2
-            center_y = y + self.grid.cell_size // 2
-            
-            # Calculate endpoint for heading line
-            line_length = self.grid.cell_size // 2
-            end_x = center_x + self.heading[0] * line_length
-            end_y = center_y + self.heading[1] * line_length
-            
-            # Draw heading line
-            '''pygame.draw.line(surface, (255, 255, 255), 
-                           (center_x, center_y), 
-                           (end_x, end_y), 2)'''

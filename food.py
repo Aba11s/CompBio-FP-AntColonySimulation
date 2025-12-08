@@ -2,6 +2,8 @@ import random
 import math
 import pygame
 
+from config import Config
+
 class FoodCluster:
     def __init__(self, grid, grid_x, grid_y, radius, density, food_per_cell=1, 
                  influence_radius_multiplier=3.0, gaussian_std=None):
@@ -209,7 +211,6 @@ class FoodCluster:
             amount_taken = food_obj.take(1)
             if amount_taken > 0:
                 self.grid.update_food_in_cluster(self.cluster_index, -1)
-                self.total_food -= 1
                 
                 if food_obj.amount <= 0:
                     self.grid.remove_food(col, row)
@@ -233,13 +234,16 @@ class FoodCluster:
         for col, row in self.food_cells:
             food_obj = self.grid.get_food(col, row)
             if food_obj and food_obj.amount > 0:
-                x, y = self.grid.grid_to_world(col, row)
-                last_x, last_y = x, y  # Update last position
+                # Get CENTER of the cell (not top-left)
+                center_x, center_y = self.grid.grid_to_world_center(col, row)
+                last_x, last_y = center_x, center_y  # Update last position
                 
                 # Fixed size for all food
                 food_size = cell_size // 2
-                food_x = x + (cell_size - food_size) // 2
-                food_y = y + (cell_size - food_size) // 2
+                
+                # Calculate top-left corner from center
+                food_x = center_x - food_size // 2
+                food_y = center_y - food_size // 2
                 
                 # Fixed color
                 color = (0, 180, 0)
@@ -264,8 +268,11 @@ class Food:
         self.row = row
         self.amount = amount
     
-    def take(self, amount):
+    def take(self, amount=1):
         """Take specified amount of food."""
         actual_taken = min(amount, self.amount)
         self.amount -= actual_taken
         return actual_taken
+    
+    def is_empty(self):
+        return self.amount <= 0

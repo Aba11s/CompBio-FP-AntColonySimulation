@@ -26,9 +26,9 @@ class AntSimulation:
         
         # Create grid
         self.grid = Grid(Config.SCREENWIDTH, Config.SCREENHEIGHT, Config.CELL_SIZE)
-        
-        # TEST: Setup heuristics
-        self.setup_test_environment()
+
+        # Set Nest
+        self.grid.set_nest_position(Config.NEST_COL, Config.NEST_ROW)
         
         # Create ants at the nest position
         self.ants = []
@@ -47,32 +47,6 @@ class AntSimulation:
         self.frame_count = 0
         self.running = True
         self.paused = False
-
-
-    
-    def setup_test_environment(self):
-        """Setup nest position and food for testing."""
-        print("\n=== Setting up test environment ===")
-        
-        # 1. Set nest position
-        self.grid.set_nest_position(Config.NEST_COL, Config.NEST_ROW)
-        print(f"✓ Nest position set to ({Config.NEST_COL}, {Config.NEST_ROW})")
-        
-        # 2. Create food clusters (they automatically register with grid)
-        for i, (food_col, food_row) in enumerate(Config.TEST_FOOD_POSITIONS):
-            # FoodCluster constructor adds itself to grid
-            cluster = FoodCluster(
-                grid=self.grid,
-                grid_x=food_col,
-                grid_y=food_row,
-                radius=Config.FOOD_CLUSTER_RADIUS,
-                density=Config.FOOD_CLUSTER_DENSITY,
-                food_per_cell=Config.FOOD_PER_CELL,
-                influence_radius_multiplier=Config.FOOD_CLUSTER_INFLUENCE_RADIUS_MULT
-            )
-            print(f"✓ Food cluster {i} at ({food_col}, {food_row}) "
-                  f"radius={Config.FOOD_CLUSTER_RADIUS}, "
-                  f"food={cluster.total_food}")
     
     def _draw_food(self):
         """Draw all food clusters stored in grid."""
@@ -158,6 +132,9 @@ class AntSimulation:
         """Update simulation state."""
         total_heuristic = 0
         ants_at_food = 0
+
+        # Grid updates
+        self.grid.update_food_clusters()
         
         for ant in self.ants:
             if self.movement_mode == "heuristic":
@@ -175,8 +152,8 @@ class AntSimulation:
         self.frame_count += 1
         
         # Print debug info periodically
-        if Config.PRINT_STATS_EVERY > 0 and self.frame_count % Config.PRINT_STATS_EVERY == 0:
-            self.print_movement_stats(total_heuristic, ants_at_food)
+        '''if Config.PRINT_STATS_EVERY > 0 and self.frame_count % Config.PRINT_STATS_EVERY == 0:
+            self.print_movement_stats(total_heuristic, ants_at_food)'''
 
     def print_movement_stats(self, total_heuristic, ants_at_food):
         """Print movement statistics."""
@@ -211,7 +188,7 @@ class AntSimulation:
             
             # SECOND: If in editor mode, handle ALL events through editor
             elif self.editor_mode:
-                print(f"EDITOR handling event: {event.type}")  # DEBUG
+                #print(f"EDITOR handling event: {event.type}")  # DEBUG
                 if self.editor.handle_events(event):
                     continue
                 # Editor didn't handle it, check for ESCAPE

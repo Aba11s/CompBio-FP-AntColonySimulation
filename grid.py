@@ -1,6 +1,8 @@
 import pygame
 import math
 
+from config import Config
+
 class Grid:
     def __init__(self, pixel_width, pixel_height, cell_size):
         
@@ -107,6 +109,29 @@ class Grid:
         print(f"Grid: Added food cluster at ({food_cluster_object.grid_x}, {food_cluster_object.grid_y}) "
             f"radius={food_cluster_object.radius}, food={food_cluster_object.total_food}")
         return len(self.food_clusters) - 1  # Return cluster index
+    
+    def update_food_clusters(self):
+        """Updates food clusters - removes empty clusters and updates heuristics."""
+        clusters_to_remove = []
+        
+        # Find empty clusters
+        for cluster in self.food_clusters:
+            if not cluster.food_cells:  # checks if empty
+                clusters_to_remove.append(cluster)
+                print(f"✓ Removing empty food cluster at ({cluster.grid_x}, {cluster.grid_y})")
+        
+        # Remove empty clusters
+        if clusters_to_remove:
+            for cluster in clusters_to_remove:
+                self.food_clusters.remove(cluster)
+            
+            # Update all remaining cluster indices
+            for i, cluster in enumerate(self.food_clusters):
+                cluster.cluster_index = i
+            
+            # Update heuristics AFTER removing clusters
+            self.update_heuristic_to_food()
+            print(f"✓ Updated food heuristics after removing {len(clusters_to_remove)} empty clusters")
 
     def update_food_in_cluster(self, cluster_index, delta_food):
         """Update food amount in a specific cluster."""
@@ -115,8 +140,9 @@ class Grid:
             cluster.total_food = max(0, cluster.total_food + delta_food)
             
             # Update heuristic if significant change
-            if abs(delta_food) / (cluster.total_food + 1) > 0.2:
-                self.update_heuristic_to_food()
+            '''if abs(delta_food) / (cluster.total_food + 1) > 0.2 or cluster.total_food <= 0:
+                self.update_heuristic_to_food()'''
+
 
     def get_food(self, grid_col, grid_row):
         """Get food object at grid coordinates."""
@@ -219,82 +245,80 @@ class Grid:
             return self.get_heuristic_to_food(grid_col, grid_row)
         
     # HEURISTIC UPDATE METHODS - UPDATED
-    def update_heuristic_to_food(self, gradient_softness=0.05):
+    def update_heuristic_to_food(self, gradient_softness=0.5):
         """
-        Update food heuristic grid based on all food clusters.
-        Uses sum of attractions from all food sources.
+        Use sigmoid function to keep values between 0 and 1.
         """
+
         # Clear the heuristic grid
-        for row in range(self.rows):
-            for col in range(self.cols):
-                self.heuristic_to_food[row][col] = 0.0
+        for r in range(self.rows):
+            for c in range(self.cols):
+                self.heuristic_to_food[r][c] = 0.0
         
-        # If no food clusters, return
         if not self.food_clusters:
             return
         
-        # For each cluster, update cells within its influence radius
         for cluster in self.food_clusters:
-            # Skip empty clusters
-            if cluster.total_food <= 0:
+            if len(cluster.food_cells) <= 0:
                 continue
             
-            # Calculate cluster density once
-            cluster_density = cluster.total_food / (cluster.radius * cluster.radius)
-            influence_radius = cluster.radius * 4
+            food_cell_count = len(cluster.food_cells)
+            influence_radius = cluster.radius * Config.FOOD_CLUSTER_INFLUENCE_RADIUS_MULT
             
-            # Calculate bounding box for this cluster's influence
             min_col = max(0, cluster.grid_x - influence_radius)
             max_col = min(self.cols - 1, cluster.grid_x + influence_radius)
             min_row = max(0, cluster.grid_y - influence_radius)
             max_row = min(self.rows - 1, cluster.grid_y + influence_radius)
             
-            # Only update cells within this cluster's influence area
-            for row in range(min_row, max_row + 1):
-                for col in range(min_col, max_col + 1):
-                    if self.obstacles[row][col]:
+            # FIXED: Use different variable names r2, c2 for inner loops
+            for r2 in range(min_row, max_row + 1):
+                for c2 in range(min_col, max_col + 1):
+                    if self.obstacles[r2][c2]:
                         continue
                     
-                    # Calculate Euclidean distance to cluster center
-                    dx = col - cluster.grid_x
-                    dy = row - cluster.grid_y
+                    dx = c2 - cluster.grid_x
+                    dy = r2 - cluster.grid_y
                     distance = math.sqrt(dx*dx + dy*dy)
                     
                     if distance <= influence_radius:
-                        # Calculate attraction and add to existing value
-                        attraction = cluster_density / (1.0 + distance * gradient_softness)
-                        self.heuristic_to_food[row][col] += attraction
+                        raw_attraction = food_cell_count / (1.0 + distance * gradient_softness)
+                        # Sigmoid: 1 / (1 + exp(-x))
+                        scaled = raw_attraction * 0.1
+                        sigmoid_attraction = 1.0 / (1.0 + math.exp(-scaled))
+                        self.heuristic_to_food[r2][c2] = max(
+                            self.heuristic_to_food[r2][c2],
+                            sigmoid_attraction
+                        )
 
-    
-    def update_heuristic_to_nest(self, target_col=None, target_row=None, gradient_softness=0.25):
+
+    def update_heuristic_to_nest(self, target_col=None, target_row=None, max_range=100):
         """
-        Update nest heuristic grid based on nest position.
-        If target is provided, use it; otherwise use self.nest_position.
+        Linear nest heuristic with maximum range.
+        Simpler to debug and understand.
         """
-        # Use provided target or stored nest position
         if target_col is None or target_row is None:
             if self.nest_position is None:
-                return  # No nest position set
+                return
             target_col, target_row = self.nest_position
         
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.obstacles[row][col]:
-                    self.heuristic_to_nest[row][col] = 0.0
+        for r in range(self.rows):
+            for c in range(self.cols):
+                if self.obstacles[r][c]:
+                    self.heuristic_to_nest[r][c] = 0.0
                     continue
                 
-                # Calculate diagonal-aware distance (same as original method)
-                dx = abs(col - target_col)
-                dy = abs(row - target_row)
-                
-                # For 8-direction movement with diagonals:
-                # Distance = min(dx, dy)*√2 + |dx - dy|
+                # Calculate diagonal-aware distance
+                dx = abs(c - target_col)
+                dy = abs(r - target_row)
                 diagonal_moves = min(dx, dy)
                 straight_moves = abs(dx - dy)
                 distance = (diagonal_moves * 1.414) + straight_moves
                 
-                # ACO heuristic: η = 1/(1+distance*gradient_softness)
-                self.heuristic_to_nest[row][col] = 1.0 / (1.0 + distance * gradient_softness)
+                if distance <= max_range:
+                    # Linear: 1.0 at nest, 0.0 at max_range
+                    self.heuristic_to_nest[r][c] = 1.0 - (distance / max_range)
+                else:
+                    self.heuristic_to_nest[r][c] = 0.0
 
 
     # Utility Method (Private)

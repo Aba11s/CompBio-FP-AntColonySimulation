@@ -1,6 +1,8 @@
 import pygame
 import math
 
+from config import Config
+
 class Editor:
     def __init__(self, grid, ant_list_ref):
         """
@@ -221,8 +223,8 @@ class Editor:
             grid_x=center_col,
             grid_y=center_row,
             radius=self.brush_size,
-            density=0.5,
-            food_per_cell=5
+            density=Config.FOOD_CLUSTER_DENSITY,
+            food_per_cell=Config.FOOD_PER_CELL
         )
         print(f"✓ Placed food cluster at ({center_col}, {center_row}) radius={self.brush_size}")
     
@@ -289,14 +291,3 @@ class Editor:
         ant_text = f"Ants: {len(self.ants)}"
         ant_surface = font.render(ant_text, True, (0, 0, 0))
         surface.blit(ant_surface, (10, 60))
-        
-        # Controls info - Updated to remove "E: Erase"
-        controls = [
-            "O: Obstacle  F: Food  A: Ant",
-            "+/-: Brush Size  C: Clear All Obstacles  P: Toggle Preview",
-            "LMB: Draw  RMB: Erase current tool type"
-        ]
-        
-        for i, line in enumerate(controls):
-            control_surface = font.render(line, True, (50, 50, 50))
-            surface.blit(control_surface, (10, 85 + i * 20))
