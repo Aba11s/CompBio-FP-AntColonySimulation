@@ -361,6 +361,6 @@ class Ant:
             end_y = center_y + self.heading[1] * line_length
             
             # Draw heading line
-            pygame.draw.line(surface, (255, 255, 255), 
+            '''pygame.draw.line(surface, (255, 255, 255), 
                            (center_x, center_y), 
-                           (end_x, end_y), 2)
+                           (end_x, end_y), 2)'''

@@ -155,6 +155,34 @@ class Grid:
             self.obstacles[grid_row][grid_col] = is_obstacle
             return True
         return False
+    
+    def draw_obstacles(self, surface, obstacle_color=(80, 80, 80)):
+        """
+        Draw all obstacles on the grid.
+        
+        Args:
+            surface: Pygame surface to draw on
+            obstacle_color: RGB color for obstacles
+        """
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.obstacles[row][col]:
+                    # Get top-left corner of cell
+                    x, y = self.grid_to_world(col, row)
+                    
+                    # Create rectangle for the cell
+                    obstacle_rect = pygame.Rect(
+                        int(x), 
+                        int(y), 
+                        self.cell_size, 
+                        self.cell_size
+                    )
+                    
+                    # Draw filled rectangle for obstacle
+                    pygame.draw.rect(surface, obstacle_color, obstacle_rect)
+                    
+                    # Optional: Draw border around obstacle
+                    '''pygame.draw.rect(surface, (50, 50, 50), obstacle_rect, 1)'''
 
     # Heuristic Methods - updated for dual heuristics
     def get_heuristic_to_food(self, grid_col, grid_row):
@@ -205,16 +233,26 @@ class Grid:
         if not self.food_clusters:
             return
         
-        # Calculate attraction from each cluster
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.obstacles[row][col]:
-                    continue
-                
-                total_attraction = 0.0
-                for cluster in self.food_clusters:  # Now cluster is an object
-                    # Skip empty clusters
-                    if cluster.total_food <= 0:
+        # For each cluster, update cells within its influence radius
+        for cluster in self.food_clusters:
+            # Skip empty clusters
+            if cluster.total_food <= 0:
+                continue
+            
+            # Calculate cluster density once
+            cluster_density = cluster.total_food / (cluster.radius * cluster.radius)
+            influence_radius = cluster.radius * 4
+            
+            # Calculate bounding box for this cluster's influence
+            min_col = max(0, cluster.grid_x - influence_radius)
+            max_col = min(self.cols - 1, cluster.grid_x + influence_radius)
+            min_row = max(0, cluster.grid_y - influence_radius)
+            max_row = min(self.rows - 1, cluster.grid_y + influence_radius)
+            
+            # Only update cells within this cluster's influence area
+            for row in range(min_row, max_row + 1):
+                for col in range(min_col, max_col + 1):
+                    if self.obstacles[row][col]:
                         continue
                     
                     # Calculate Euclidean distance to cluster center
@@ -222,15 +260,10 @@ class Grid:
                     dy = row - cluster.grid_y
                     distance = math.sqrt(dx*dx + dy*dy)
                     
-                    # Only consider clusters within influence range (4x radius)
-                    influence_radius = cluster.radius * 4
                     if distance <= influence_radius:
-                        # Calculate attraction: cluster density / (1 + distance * gradient_softness)
-                        cluster_density = cluster.total_food / (cluster.radius * cluster.radius)
+                        # Calculate attraction and add to existing value
                         attraction = cluster_density / (1.0 + distance * gradient_softness)
-                        total_attraction += attraction
-                
-                self.heuristic_to_food[row][col] = total_attraction
+                        self.heuristic_to_food[row][col] += attraction
 
     
     def update_heuristic_to_nest(self, target_col=None, target_row=None, gradient_softness=0.25):

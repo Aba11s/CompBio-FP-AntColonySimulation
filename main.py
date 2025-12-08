@@ -6,6 +6,7 @@ from config import Config
 from grid import Grid
 from ant import Ant
 from food import FoodCluster, Food
+from editor import Editor
 
 # In main.py, update the AntSimulation class:
 
@@ -37,6 +38,10 @@ class AntSimulation:
 
         # Ant movement mode 
         self.movement_mode = "heuristic"
+
+        # Editor setup
+        self.editor = Editor(self.grid, self.ants)
+        self.editor_mode = False  # Toggle with key
         
         # State
         self.frame_count = 0
@@ -197,7 +202,25 @@ class AntSimulation:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            elif event.type == pygame.KEYDOWN:
+            
+            # FIRST: Always check for TAB to toggle editor mode
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self.editor_mode = not self.editor_mode
+                print(f"\n✓ Editor mode: {'ON' if self.editor_mode else 'OFF'}")
+                continue  # Skip further processing
+            
+            # SECOND: If in editor mode, handle ALL events through editor
+            elif self.editor_mode:
+                print(f"EDITOR handling event: {event.type}")  # DEBUG
+                if self.editor.handle_events(event):
+                    continue
+                # Editor didn't handle it, check for ESCAPE
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.running = False
+                    continue
+            
+            # THIRD: Handle simulation events (only when NOT in editor mode)
+            elif not self.editor_mode and event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 elif event.key == pygame.K_r:
@@ -219,8 +242,6 @@ class AntSimulation:
                     # Toggle pause
                     self.paused = not self.paused
                     print(f"\n✓ Simulation {'PAUSED' if self.paused else 'RUNNING'}")
-
-                # NEW KEYS
                 elif event.key == pygame.K_1:
                     # Switch to heuristic movement
                     self.movement_mode = "heuristic"
@@ -246,10 +267,16 @@ class AntSimulation:
         """Draw heads-up display - only FPS."""
         font = pygame.font.Font(None, 24)
         
-        # Show FPS only
+        # Show FPS
         fps_text = f"FPS: {int(self.clock.get_fps())}"
         fps_surface = font.render(fps_text, True, (0, 0, 0))
         self.screen.blit(fps_surface, (10, 10))
+
+        # Show editor mode status
+        if self.editor_mode:
+            mode_text = "EDITOR MODE (TAB to exit)"
+            mode_surface = font.render(mode_text, True, (200, 0, 0))
+            self.screen.blit(mode_surface, (self.screen.get_width() - 250, 10))
 
     def _draw_grid_lines(self):
         """Draw grid lines for visualization."""
@@ -285,6 +312,8 @@ class AntSimulation:
         if Config.SHOW_GRID_LINES:
             self._draw_grid_lines()
 
+        self.grid.draw_obstacles(self.screen, Config.OBSTACLE_COLOR)
+
         self._draw_food()
         
         # Draw nest
@@ -293,9 +322,18 @@ class AntSimulation:
         # Draw ants
         for ant in self.ants:
             ant.draw(self.screen, Config.ANT_COLOR)
+
+        if self.editor_mode:
+            mouse_pos = pygame.mouse.get_pos()
+            self.editor.draw_brush_preview(self.screen, mouse_pos)
         
         # Draw HUD (only FPS)
         self._draw_hud()
+
+        # Draw editor UI if in editor mode
+        if self.editor_mode:
+            font = pygame.font.Font(None, 20)
+            self.editor.draw_ui(self.screen, font)
         
         # Update display
         pygame.display.flip()

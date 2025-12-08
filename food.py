@@ -228,10 +228,13 @@ class FoodCluster:
     
     def draw(self, surface, cell_size):
         # Draw food cells
+        last_x, last_y = None, None  # Store last position for drawing info
+        
         for col, row in self.food_cells:
             food_obj = self.grid.get_food(col, row)
             if food_obj and food_obj.amount > 0:
                 x, y = self.grid.grid_to_world(col, row)
+                last_x, last_y = x, y  # Update last position
                 
                 # Fixed size for all food
                 food_size = cell_size // 2
@@ -244,12 +247,13 @@ class FoodCluster:
                 pygame.draw.rect(surface, color,
                                 (food_x, food_y, food_size, food_size))
         
-        # Draw cluster info
-        '''font = pygame.font.Font(None, 20)
-        text = font.render(f"Food: {self.total_food}", True, (0, 0, 0))
-        surface.blit(text, (int(center_x) - 20, int(center_y) - 30))'''
+        # Draw cluster info only if we have at least one food cell drawn
+        if last_x is not None and last_y is not None:
+            font = pygame.font.Font(None, 20)
+            text = font.render(f"Food: {self.total_food}", True, (0, 0, 0))
+            surface.blit(text, (int(last_x) - 20, int(last_y) - 30))
         
-        # Draw Gaussian info
+        # Draw Gaussian info'''
         '''info_text = font.render(f"σ: {self.gaussian_std:.1f}", True, (100, 100, 100))
         surface.blit(info_text, (int(center_x) - 15, int(center_y) - 50))'''
 
