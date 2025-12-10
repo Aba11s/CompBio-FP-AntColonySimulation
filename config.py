@@ -1,20 +1,21 @@
 class Config:
     # ===== WINDOW & RENDERING =====
-    SCREENWIDTH = 500
-    SCREENHEIGHT = 500
-    FPS = 30
-    BACKGROUND_COLOR = (255, 255, 255)
-    GRID_LINE_COLOR = (150, 150, 150)
+    SCREENWIDTH = 700
+    SCREENHEIGHT = 700
+    FPS = 9999
+    BACKGROUND_COLOR = (175, 150, 120)
+    GRID_LINE_COLOR = (75, 75, 75)
     SHOW_GRID_LINES = True  # Toggle grid visualization
     
     # ===== GRID =====
-    CELL_SIZE = 5
+    CELL_SIZE = 10  
     # Derived values (will be calculated)
     # GRID_COLS = SCREENWIDTH // CELL_SIZE
     # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
     
     # ===== ANT COLONY =====
-    NUM_ANTS = 500  # Few ants for testing
+    NEST_RADIUS = 3
+    NUM_ANTS = 100  # Few ants for testing
 
     # ===== FOOD SETTINGS =====
     INITIAL_FOOD_CLUSTERS = 1
@@ -32,21 +33,24 @@ class Config:
     ]
     
     # ===== ANT BEHAVIOR =====
-    ANT_SPEED = 1  # Cells per frame when moving
-    ANT_VISION_RANGE = 3  # Cells (for future sensing)
-    ANT_TURN_PROBABILITY = 0.1  # For random movement phase
+    ANT_STRAIGHTNESS_BIAS = 0.7
+    ANT_TURN_PENALTY = 0.3
     ANT_COLOR = (0, 0, 0)  # White
     ANT_WITH_FOOD_COLOR = (0, 255, 0)  # Green
     
     # ===== ACO PARAMETERS =====
     # These control the ACO probability formula: (pheromone^ALPHA) * (heuristic^BETA)
     ALPHA = 1.0  # Pheromone importance
-    BETA = 2.0   # Heuristic importance
-    EVAPORATION_RATE = 0.05  # Pheromone evaporation per frame
+    BETA = 1.0   # Heuristic importance
+    EVAPORATION_RATE = 0.1  # Pheromone evaporation per frame
     DIFFUSION_RATE = 0.1    # Pheromone spread to neighbors
+    EVAPORATION_INTERVAL = 10
+    DIFFUSION_INTERVAL = 10
     
     # ===== PHEROMONE SETTINGS =====
-    PHEROMONE_DROP_STRENGTH = 10.0
+    PHEROMONE_MAX_DROP_STRENGTH = 25.0
+    PHEROMONE_MIN_DROP_STRENGTH = 0.0
+    PHEROMONE_DECAY_RATE = 0.99
     PHEROMONE_MAX_STRENGTH = 100.0
     TO_FOOD_PHEROMONE_COLOR = (255, 0, 0)    # RED
     TO_NEST_PHEROMONE_COLOR = (0, 0, 255)  # BLUE
@@ -54,11 +58,11 @@ class Config:
     # ===== FOOD SETTINGS =====
     INITIAL_FOOD_SOURCES = 5
     FOOD_PER_SOURCE = 50
-    FOOD_COLOR = (255, 255, 0)  # YELLOW
+    FOOD_COLOR = (0, 255, 0)  # GREEN
     FOOD_RESPAWN = True
     
     # ===== OBSTACLES =====
-    OBSTACLE_COLOR = (100, 50, 25)
+    OBSTACLE_COLOR = (100, 70, 55)
     
     # ===== VISUALIZATION =====
     DRAW_PHEROMONES = True

@@ -96,6 +96,170 @@ class Grid:
         elif p_type == "to_nest":
             self.pheromone_to_nest[grid_row][grid_col] = strength
         return True
+    
+    def evaporate_pheromones(self):
+        """Apply evaporation to both pheromone grids."""
+        for row in range(self.rows):
+            for col in range(self.cols):
+                # Evaporate food pheromones
+                self.pheromone_to_food[row][col] *= (1 - Config.EVAPORATION_RATE)
+                # Evaporate nest pheromones (could use different rate if desired)
+                self.pheromone_to_nest[row][col] *= (1 - Config.EVAPORATION_RATE)
+                
+                # Cap at maximum and floor at minimum
+                self.pheromone_to_food[row][col] = min(
+                    self.pheromone_to_food[row][col], 
+                    Config.PHEROMONE_MAX_STRENGTH
+                )
+                self.pheromone_to_nest[row][col] = min(
+                    self.pheromone_to_nest[row][col], 
+                    Config.PHEROMONE_MAX_STRENGTH
+                )
+                
+                # Floor very low values to 0
+                if self.pheromone_to_food[row][col] < 0.01:
+                    self.pheromone_to_food[row][col] = 0
+                if self.pheromone_to_nest[row][col] < 0.01:
+                    self.pheromone_to_nest[row][col] = 0
+    
+    def diffuse_pheromones(self):
+        """
+        Diffuse pheromones with distance-based weights.
+        Closer neighbors get more pheromone than diagonals.
+        """
+        if Config.DIFFUSION_RATE <= 0:
+            return
+        
+        # Weight matrix: orthogonal neighbors get more than diagonals
+        # Orthogonal: weight 2, Diagonal: weight 1
+        WEIGHT_MATRIX = {
+            (-1, -1): 2, (0, -1): 1, (1, -1): 2,
+            (-1,  0): 1,             (1,  0): 1,
+            (-1,  1): 2, (0,  1): 1, (1,  1): 2
+        }
+        
+        total_weight = sum(WEIGHT_MATRIX.values())
+        
+        new_food = [[0.0] * self.cols for _ in range(self.rows)]
+        new_nest = [[0.0] * self.cols for _ in range(self.rows)]
+        
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.obstacles[row][col]:
+                    continue
+                
+                current_food = self.pheromone_to_food[row][col]
+                current_nest = self.pheromone_to_nest[row][col]
+                
+                # Keep some in current cell
+                keep = 1 - Config.DIFFUSION_RATE
+                new_food[row][col] += current_food * keep
+                new_nest[row][col] += current_nest * keep
+                
+                # Distribute to neighbors by weight
+                for (dc, dr), weight in WEIGHT_MATRIX.items():
+                    nc = col + dc
+                    nr = row + dr
+                    
+                    if (0 <= nr < self.rows and 0 <= nc < self.cols and 
+                        not self.obstacles[nr][nc]):
+                        
+                        # Calculate amount for this neighbor
+                        amount_food = current_food * Config.DIFFUSION_RATE * (weight / total_weight)
+                        amount_nest = current_nest * Config.DIFFUSION_RATE * (weight / total_weight)
+                        
+                        new_food[nr][nc] += amount_food
+                        new_nest[nr][nc] += amount_nest
+        
+        self.pheromone_to_food = new_food
+        self.pheromone_to_nest = new_nest
+
+    
+    def draw_pheromones(self, surface):
+        """
+        Draw both pheromone fields onto the given surface.
+        Called from main simulation loop.
+        """
+        if not Config.DRAW_PHEROMONES:
+            return
+            
+        # Create temporary surfaces for alpha blending
+        food_surface = pygame.Surface((self.cols * self.cell_size, 
+                                       self.rows * self.cell_size), 
+                                      pygame.SRCALPHA)
+        nest_surface = pygame.Surface((self.cols * self.cell_size, 
+                                       self.rows * self.cell_size), 
+                                      pygame.SRCALPHA)
+        
+        # Draw food pheromones (red) - scale to cell size
+        for row in range(self.rows):
+            for col in range(self.cols):
+                strength = self.pheromone_to_food[row][col]
+                if strength > 0:
+                    # Normalize to 0-200 alpha (keeps it semi-transparent)
+                    alpha = min(int(strength / Config.PHEROMONE_MAX_STRENGTH * 200), 200)
+                    color = (*Config.TO_FOOD_PHEROMONE_COLOR, alpha)
+                    
+                    # Calculate pixel position
+                    x = col * self.cell_size
+                    y = row * self.cell_size
+                    
+                    # Draw filled cell
+                    cell_rect = pygame.Rect(x, y, self.cell_size, self.cell_size)
+                    pygame.draw.rect(food_surface, color, cell_rect)
+        
+        # Draw nest pheromones (blue) - scale to cell size  
+        for row in range(self.rows):
+            for col in range(self.cols):
+                strength = self.pheromone_to_nest[row][col]
+                if strength > 0:
+                    # Normalize to 0-200 alpha
+                    alpha = min(int(strength / Config.PHEROMONE_MAX_STRENGTH * 200), 200)
+                    color = (*Config.TO_NEST_PHEROMONE_COLOR, alpha)
+                    
+                    # Calculate pixel position
+                    x = col * self.cell_size
+                    y = row * self.cell_size
+                    
+                    # Draw filled cell
+                    cell_rect = pygame.Rect(x, y, self.cell_size, self.cell_size)
+                    pygame.draw.rect(nest_surface, color, cell_rect)
+        
+        # Blend onto main surface (food under nest for visual clarity)
+        surface.blit(food_surface, (0, 0))
+        surface.blit(nest_surface, (0, 0))
+
+    def draw_pheromones_gradient(self, surface):
+        """
+        Draw pheromones with gradient effect (darker = stronger).
+        """
+        for row in range(self.rows):
+            for col in range(self.cols):
+                # Combine both pheromone types (optional)
+                food_strength = self.pheromone_to_food[row][col]
+                nest_strength = self.pheromone_to_nest[row][col]
+                
+                if food_strength > 0 or nest_strength > 0:
+                    # Calculate blended color
+                    food_factor = food_strength / Config.PHEROMONE_MAX_STRENGTH
+                    nest_factor = nest_strength / Config.PHEROMONE_MAX_STRENGTH
+                    
+                    # Blend red and blue based on relative strengths
+                    r = int(Config.TO_FOOD_PHEROMONE_COLOR[0] * food_factor)
+                    g = 0  # No green in this color scheme
+                    b = int(Config.TO_NEST_PHEROMONE_COLOR[2] * nest_factor)
+                    
+                    # Brightness based on total strength
+                    total_factor = min(food_factor + nest_factor, 1.0)
+                    alpha = int(100 + total_factor * 155)  # 100-255 alpha
+                    
+                    color = (r, g, b, alpha)
+                    x = col * self.cell_size
+                    y = row * self.cell_size
+                    
+                    cell_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
+                    pygame.draw.rect(cell_surface, color, (0, 0, self.cell_size, self.cell_size))
+                    surface.blit(cell_surface, (x, y))
 
     # Food Methods
 

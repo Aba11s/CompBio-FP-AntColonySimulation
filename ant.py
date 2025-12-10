@@ -12,11 +12,18 @@ class Ant:
         """
         self.grid = grid
         self.has_food = False
+        self.just_changed_state = False
         
         # ACO parameters
         self.alpha = 1.0  # Pheromone importance (0 for heuristic-only)
         self.beta = 2.0   # Heuristic importance
-        
+
+        # Pheromone drop strength
+        self.base_strength = Config.PHEROMONE_MAX_DROP_STRENGTH
+        self.current_strength = self.base_strength
+        self.strength_decay_rate = Config.PHEROMONE_DECAY_RATE  # 2% decay per step
+        self.min_strength = Config.PHEROMONE_MIN_DROP_STRENGTH
+
         # Direction persistence for smoother movement
         self.heading = None  # (dx, dy) - will be initialized on first move
         
@@ -164,7 +171,7 @@ class Ant:
         
         return True
  
-    def move_with_heuristic(self, explore_chance=0.1, temperature=0.02):
+    def move_with_heuristic(self, explore_chance=0.2, temperature=0.1):
         """Minimal heuristic movement with food pickup/dropoff."""
         
         #print(self.has_food)
@@ -221,14 +228,258 @@ class Ant:
                 self.heading = (dx, dy)
         
         return True
-
-    def move_aco(self):
+    
+    def move_aco(self, explore_chance=0.05, temperature=0.01):
         """
         Full ACO movement with pheromones AND heuristics.
-        Will implement after pheromone system is ready.
+        Uses temperature for softmax probability distribution.
+        
+        Args:
+            explore_chance: Probability of random exploration (0-1)
+            temperature: Controls exploration/exploitation (higher = more random)
         """
-        # For now, use heuristic-only movement
-        return self.move_with_heuristic()
+        # Food pickup/dropoff logic
+        if self.has_food:
+            self._drop_food()
+        
+        if not self.has_food:
+            self._pickup_food()
+        
+        # Small chance to explore randomly
+        if random.random() < explore_chance:
+            return self.move_random()
+        
+        # Get allowed moves (respects heading restrictions)
+        moves = self._get_allowed_neighbors()
+        if not moves:
+            # Fallback to all valid moves if restricted set is empty
+            moves = [(nc, nr, math.sqrt(dx*dx + dy*dy)) 
+                    for nc, nr, dx, dy in self._get_valid_neighbors()]
+        
+        if not moves:
+            return False
+        
+        # Calculate "attractiveness" scores using ACO formula: (pheromone^α) * (heuristic^β)
+        scores = []
+        
+        for col, row, dist in moves:
+            # Choose which pheromone and heuristic to follow based on state
+            if self.has_food:
+                # Heading back to nest: follow NEST pheromones
+                pheromone = self.grid.get_pheromone_to_nest(col, row)
+                heuristic = self.grid.get_heuristic_to_nest(col, row)
+            else:
+                # Searching for food: follow FOOD pheromones
+                pheromone = self.grid.get_pheromone_to_food(col, row)
+                heuristic = self.grid.get_heuristic_to_food(col, row)
+            
+            # ACO attractiveness score
+            p = (pheromone + 0.01) ** Config.ALPHA
+            h = (heuristic + 0.01) ** Config.BETA
+            
+            # Combine and normalize by distance (prefer shorter moves)
+            score = (p * h) / max(dist, 0.001)
+            scores.append(score)
+        
+        # NUMERICALLY STABLE SOFTMAX with temperature
+        # Use log-sum-exp trick to prevent overflow
+        
+        if temperature <= 0:
+            temperature = 0.001  # Avoid division by zero
+        
+        # Find maximum score for numerical stability
+        max_score = max(scores)
+        
+        # If all scores are 0, use uniform distribution
+        if max_score == 0:
+            probs = [1.0 / len(scores)] * len(scores)
+        else:
+            # Subtract max_score for numerical stability
+            scaled_scores = [(s - max_score) / temperature for s in scores]
+            
+            # Cap very large negative values to prevent underflow
+            scaled_scores = [max(s, -50) for s in scaled_scores]  # exp(-50) ≈ 1.9e-22
+            
+            # Calculate exponentials
+            exp_scores = [math.exp(s) for s in scaled_scores]
+            total_exp = sum(exp_scores)
+            
+            # If total_exp is 0 (all scores were -inf after scaling), fallback to uniform
+            if total_exp == 0:
+                probs = [1.0 / len(scores)] * len(scores)
+            else:
+                probs = [es / total_exp for es in exp_scores]
+        
+        # Choose move based on probabilities
+        idx = random.choices(range(len(moves)), weights=probs, k=1)[0]
+        col, row, dist = moves[idx]
+        
+        # Deposit pheromone BEFORE moving (at current position)
+        self._deposit_pheromone()
+        
+        # Update position
+        self.col, self.row = col, row
+        self.distance_traveled += dist
+        self.steps_taken += 1
+        self.path.append((col, row))
+        
+        # Update heading
+        if len(self.path) >= 2:
+            prev = self.path[-2]
+            dx, dy = col - prev[0], row - prev[1]
+            if dx or dy:
+                self.heading = (dx, dy)
+        
+        return True
+    
+    def move_aco_8dir(self, explore_chance=0.05):
+        """
+        ACO movement with TRUE 8-direction movement (no turning restrictions).
+        Pheromone logic matches your corrected version.
+        """
+        # Food pickup/dropoff logic
+        if self.has_food:
+            self._drop_food()
+        
+        if not self.has_food:
+            self._pickup_food()
+        
+        # Small chance to explore randomly (with 8-direction random movement)
+        if random.random() < explore_chance:
+            return self.move_random_8dir()
+        
+        # Get ALL valid neighbors (8 directions)
+        moves = []
+        for dc in [-1, 0, 1]:
+            for dr in [-1, 0, 1]:
+                if dc == 0 and dr == 0:
+                    continue  # Skip current position
+                
+                nc = self.col + dc
+                nr = self.row + dr
+                
+                # Check bounds and obstacles
+                if (0 <= nc < self.grid.cols and 
+                    0 <= nr < self.grid.rows and 
+                    not self.grid.is_obstacle(nc, nr)):
+                    
+                    # Calculate actual Euclidean distance
+                    distance = math.sqrt(dc*dc + dr*dr)  # 1.0 or 1.414
+                    moves.append((nc, nr, distance))
+        
+        if not moves:
+            return False  # Completely stuck
+        
+        # Calculate probabilities using ACO formula: (pheromone^α) * (heuristic^β)
+        probs = []
+        
+        for col, row, dist in moves:
+            # Choose which pheromone and heuristic to follow based on state
+            if self.has_food:
+                # Heading back to nest: follow NEST pheromones
+                pheromone = self.grid.get_pheromone_to_nest(col, row)
+                heuristic = self.grid.get_heuristic_to_nest(col, row)
+            else:
+                # Searching for food: follow FOOD pheromones
+                pheromone = self.grid.get_pheromone_to_food(col, row)
+                heuristic = self.grid.get_heuristic_to_food(col, row)
+            
+            # ACO probability formula with your fixed constants
+            p = (pheromone + 0.01) ** Config.ALPHA
+            h = (heuristic + 0.01) ** Config.BETA
+            
+            # Combine and normalize by distance (prefer shorter moves)
+            probability = (p * h) / max(dist, 0.001)
+            probs.append(probability)
+        
+        # Choose move based on probabilities
+        if sum(probs) > 0:
+            idx = random.choices(range(len(moves)), weights=probs, k=1)[0]
+        else:
+            # Fallback: equal probability for all moves
+            idx = random.randint(0, len(moves)-1)
+        
+        col, row, dist = moves[idx]
+        
+        # Deposit pheromone (using your corrected logic)
+        self._deposit_pheromone()
+        
+        # Update position
+        self.col, self.row = col, row
+        self.distance_traveled += dist
+        self.steps_taken += 1
+        self.path.append((col, row))
+        
+        # Update heading (optional, for consistency)
+        if len(self.path) >= 2:
+            prev = self.path[-2]
+            dx, dy = col - prev[0], row - prev[1]
+            if dx != 0 or dy != 0:
+                self.heading = (dx, dy)
+        
+        return True
+    
+    def move_random_8dir(self):
+        """
+        Random 8-direction movement (no turning restrictions).
+        """
+        # Get ALL valid neighbors
+        moves = []
+        for dc in [-1, 0, 1]:
+            for dr in [-1, 0, 1]:
+                if dc == 0 and dr == 0:
+                    continue
+                
+                nc = self.col + dc
+                nr = self.row + dr
+                
+                if (0 <= nc < self.grid.cols and 
+                    0 <= nr < self.grid.rows and 
+                    not self.grid.is_obstacle(nc, nr)):
+                    
+                    distance = math.sqrt(dc*dc + dr*dr)
+                    moves.append((nc, nr, distance))
+        
+        if not moves:
+            return False
+        
+        # Choose random move
+        col, row, dist = random.choice(moves)
+        
+        # Update position
+        self.col, self.row = col, row
+        self.distance_traveled += dist
+        self.steps_taken += 1
+        self.path.append((col, row))
+        
+        # Update heading
+        if len(self.path) >= 2:
+            prev = self.path[-2]
+            dx, dy = col - prev[0], row - prev[1]
+            if dx != 0 or dy != 0:
+                self.heading = (dx, dy)
+        
+        return True
+    
+    def _deposit_pheromone(self):
+        """Deposit pheromone with decaying strength based on distance traveled."""
+        # Current strength decays over time/steps
+        current_strength = self.current_strength
+        
+        if self.has_food:
+            # Heading to nest: deposit FOOD pheromone
+            self.grid.add_pheromone(self.col, self.row, "to_food", current_strength)
+        else:
+            # Searching for food: deposit NEST pheromone  
+            self.grid.add_pheromone(self.col, self.row, "to_nest", current_strength)
+        
+        # Decay strength for next deposit
+        self.current_strength *= self.strength_decay_rate
+        self.current_strength = max(self.current_strength, self.min_strength)
+
+    def _reset_strength(self):
+        """Reset pheromone strength (called when picking up or dropping food)."""
+        self.current_strength = self.base_strength
     
     def get_current_heuristic(self):
         """Get current food heuristic value."""
@@ -244,6 +495,12 @@ class Ant:
             'heading': self.heading
         }
     
+    def _reverse_direction(self):
+        """Reverse the ant's heading (180° turn)."""
+        if self.heading is not None:
+            hx, hy = self.heading
+            self.heading = (-hx, -hy)
+    
     def _pickup_food(self):
         """Try to pick up food from current cell."""
         if not self.has_food and self.grid.has_food(self.col, self.row):
@@ -253,6 +510,8 @@ class Ant:
                     if cluster.take_food(self.col, self.row) > 0:
                         self.has_food = True
                         #print(f"✓ Ant picked up food at ({self.col}, {self.row})")  # Optional debug
+                        self._reset_strength()
+                        self._reverse_direction()
                         return True
         return False
     
@@ -262,12 +521,22 @@ class Ant:
             self.has_food = False
             # Optionally track total food collected
             #print(f"✓ Ant delivered food to nest")  # Optional debug
+            self._reset_strength()
+            self._reverse_direction()
             return True
         return False
 
     def _at_nest(self):
-        """Check if ant is at nest."""
-        return self.grid.nest_position == (self.col, self.row)
+        """Check if ant is within nest radius."""
+        if self.grid.nest_position is None:
+            return False
+            
+        nest_col, nest_row = self.grid.nest_position
+        dx = self.col - nest_col
+        dy = self.row - nest_row
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        return distance <= Config.NEST_RADIUS
     
 
 
@@ -277,8 +546,11 @@ class Ant:
     def draw(self, surface, color=None):
         """Draw the ant as a filled grid cell."""
         if color is None:
-            # Change color when carrying food
-            color = Config.ANT_WITH_FOOD_COLOR if self.has_food else Config.ANT_COLOR
+            # Change color based on ant state
+            if self.has_food:
+                color = Config.FOOD_COLOR  # Green when carrying food
+            else:
+                color = Config.ANT_COLOR  # Black when searching
         
         # Get the top-left corner of the cell
         x, y = self.grid.grid_to_world(self.col, self.row)

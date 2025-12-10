@@ -246,7 +246,7 @@ class FoodCluster:
                 food_y = center_y - food_size // 2
                 
                 # Fixed color
-                color = (0, 180, 0)
+                color = Config.FOOD_COLOR
                 
                 pygame.draw.rect(surface, color,
                                 (food_x, food_y, food_size, food_size))

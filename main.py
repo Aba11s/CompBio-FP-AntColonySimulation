@@ -8,6 +8,9 @@ from ant import Ant
 from food import FoodCluster, Food
 from editor import Editor
 
+import concurrent.futures
+from functools import partial
+
 # In main.py, update the AntSimulation class:
 
 class AntSimulation:
@@ -37,7 +40,7 @@ class AntSimulation:
             self.ants.append(ant)
 
         # Ant movement mode 
-        self.movement_mode = "heuristic"
+        self.movement_mode = "aco"
 
         # Editor setup
         self.editor = Editor(self.grid, self.ants)
@@ -47,6 +50,10 @@ class AntSimulation:
         self.frame_count = 0
         self.running = True
         self.paused = False
+
+        # Optimization
+        self.ph_counter = 0
+        self.df_counter = 0
     
     def _draw_food(self):
         """Draw all food clusters stored in grid."""
@@ -129,49 +136,35 @@ class AntSimulation:
         print(f"\nMaximum {name} heuristic: {max_value:.3f} at position {max_pos}")
     
     def update(self):
-        """Update simulation state."""
+        """Update simulation with optimized pheromone updates."""
         total_heuristic = 0
         ants_at_food = 0
-
+        
         # Grid updates
         self.grid.update_food_clusters()
         
+        # OPTIMIZATION: Evaporate less frequently
+        self.ph_counter += 1
+        if self.ph_counter >= Config.EVAPORATION_INTERVAL:
+            if self.movement_mode == "aco":
+                self.grid.evaporate_pheromones()
+            self.ph_counter = 0
+
+        # OPTIMIZATION: DIFFUSE less frequently
+        '''self.df_counter += 1
+        if self.df_counter >= Config.DIFFUSION_INTERVAL:
+            self.grid.diffuse_pheromones()
+            self.df_counter = 0'''
+        
+        # Single-threaded ant updates (fastest for <500 ants)
         for ant in self.ants:
             if self.movement_mode == "heuristic":
                 ant.move_with_heuristic()
-            else:
+            elif self.movement_mode == "random":
                 ant.move_random()
+            elif self.movement_mode == "aco":
+                ant.move_aco()
             
-            # Track stats
-            heuristic = ant.get_current_heuristic()
-            total_heuristic += heuristic
-            if heuristic > 2.0:  # Near food
-                ants_at_food += 1
-        
-        # Update frame counter
-        self.frame_count += 1
-        
-        # Print debug info periodically
-        '''if Config.PRINT_STATS_EVERY > 0 and self.frame_count % Config.PRINT_STATS_EVERY == 0:
-            self.print_movement_stats(total_heuristic, ants_at_food)'''
-
-    def print_movement_stats(self, total_heuristic, ants_at_food):
-        """Print movement statistics."""
-        avg_heuristic = total_heuristic / len(self.ants) if self.ants else 0
-        
-        print(f"\n=== Frame {self.frame_count} ({self.movement_mode} movement) ===")
-        print(f"Average food heuristic: {avg_heuristic:.3f} (max possible: ~2.4)")
-        print(f"Ants near food (heuristic > 2.0): {ants_at_food}/{len(self.ants)}")
-        
-        # Progress indicator
-        if avg_heuristic > 2.0:
-            print("✅ Excellent: Most ants at food!")
-        elif avg_heuristic > 1.5:
-            print("⚠️ Good: Ants moving toward food")
-        elif avg_heuristic > 1.0:
-            print("↗️ Fair: Some progress")
-        else:
-            print("⏳ Poor: Ants not finding food")
     
     # Add a key handler to print heuristics on demand
     def handle_events(self):
@@ -275,44 +268,43 @@ class AntSimulation:
         center_x, center_y = self.grid.grid_to_world_center(Config.NEST_COL, Config.NEST_ROW)
         
         # Draw nest as a yellow circle
-        nest_radius = Config.CELL_SIZE
         pygame.draw.circle(self.screen, (255, 255, 0),  # Yellow
                          (int(center_x), int(center_y)), 
-                         nest_radius)
+                         Config.NEST_RADIUS * Config.CELL_SIZE)
     
     def draw(self):
         """Draw everything to the screen."""
         # Clear screen
         self.screen.fill(Config.BACKGROUND_COLOR)
         
+        # Draw pheromones FIRST (background) - Grid handles its own drawing
+        if self.movement_mode == "aco" and Config.DRAW_PHEROMONES:
+            self.grid.draw_pheromones(self.screen)
+        
         # Draw grid lines if enabled
         if Config.SHOW_GRID_LINES:
             self._draw_grid_lines()
-
+        
         self.grid.draw_obstacles(self.screen, Config.OBSTACLE_COLOR)
-
         self._draw_food()
         
-        # Draw nest
+        # Draw ants (on top)
+        for ant in self.ants:
+            #ant.draw(self.screen)
+            ...
+
         self._draw_nest()
         
-        # Draw ants
-        for ant in self.ants:
-            ant.draw(self.screen, Config.ANT_COLOR)
-
         if self.editor_mode:
             mouse_pos = pygame.mouse.get_pos()
             self.editor.draw_brush_preview(self.screen, mouse_pos)
         
-        # Draw HUD (only FPS)
         self._draw_hud()
-
-        # Draw editor UI if in editor mode
+        
         if self.editor_mode:
             font = pygame.font.Font(None, 20)
             self.editor.draw_ui(self.screen, font)
         
-        # Update display
         pygame.display.flip()
     
     def run(self):
