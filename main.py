@@ -290,7 +290,7 @@ class AntSimulation:
         
         # Draw ants (on top)
         for ant in self.ants:
-            #ant.draw(self.screen)
+            ant.draw(self.screen)
             ...
 
         self._draw_nest()

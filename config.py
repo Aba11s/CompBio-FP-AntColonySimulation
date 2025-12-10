@@ -2,7 +2,7 @@ class Config:
     # ===== WINDOW & RENDERING =====
     SCREENWIDTH = 700
     SCREENHEIGHT = 700
-    FPS = 9999
+    FPS = 60
     BACKGROUND_COLOR = (175, 150, 120)
     GRID_LINE_COLOR = (75, 75, 75)
     SHOW_GRID_LINES = True  # Toggle grid visualization
@@ -15,7 +15,7 @@ class Config:
     
     # ===== ANT COLONY =====
     NEST_RADIUS = 3
-    NUM_ANTS = 100  # Few ants for testing
+    NUM_ANTS = 1  # Few ants for testing
 
     # ===== FOOD SETTINGS =====
     INITIAL_FOOD_CLUSTERS = 1
@@ -33,15 +33,14 @@ class Config:
     ]
     
     # ===== ANT BEHAVIOR =====
-    ANT_STRAIGHTNESS_BIAS = 0.7
-    ANT_TURN_PENALTY = 0.3
+    ANT_STRAIGHTNESS_BIAS = 1
     ANT_COLOR = (0, 0, 0)  # White
     ANT_WITH_FOOD_COLOR = (0, 255, 0)  # Green
     
     # ===== ACO PARAMETERS =====
     # These control the ACO probability formula: (pheromone^ALPHA) * (heuristic^BETA)
     ALPHA = 1.0  # Pheromone importance
-    BETA = 1.0   # Heuristic importance
+    BETA = 2.0   # Heuristic importance
     EVAPORATION_RATE = 0.1  # Pheromone evaporation per frame
     DIFFUSION_RATE = 0.1    # Pheromone spread to neighbors
     EVAPORATION_INTERVAL = 10

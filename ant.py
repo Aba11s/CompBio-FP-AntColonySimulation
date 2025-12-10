@@ -229,7 +229,7 @@ class Ant:
         
         return True
     
-    def move_aco(self, explore_chance=0.05, temperature=0.01):
+    def move_aco(self, explore_chance=0.05, temperature=0.1):
         """
         Full ACO movement with pheromones AND heuristics.
         Uses temperature for softmax probability distribution.
@@ -546,11 +546,8 @@ class Ant:
     def draw(self, surface, color=None):
         """Draw the ant as a filled grid cell."""
         if color is None:
-            # Change color based on ant state
-            if self.has_food:
-                color = Config.FOOD_COLOR  # Green when carrying food
-            else:
-                color = Config.ANT_COLOR  # Black when searching
+            # Change color when carrying food
+            color = Config.ANT_WITH_FOOD_COLOR if self.has_food else Config.ANT_COLOR
         
         # Get the top-left corner of the cell
         x, y = self.grid.grid_to_world(self.col, self.row)
