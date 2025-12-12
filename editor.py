@@ -23,8 +23,9 @@ class Editor:
         self.tool_colors = {
             "obstacle": (80, 80, 80),
             "food": (0, 180, 0),
-            "erase": (255, 100, 100),
-            "ant": (0, 0, 0)
+            "ant": (0, 0, 0),
+            "pheromone_food": (255, 0, 0),  # Red for food pheromones
+            "pheromone_nest": (0, 0, 255),  # Blue for nest pheromones
         }
         
         # Brush preview
@@ -41,6 +42,12 @@ class Editor:
         elif event.key == pygame.K_f:
             self.current_tool = "food"
             print("✓ Tool: Food")
+        elif event.key == pygame.K_p:  # P for Pheromone (food)
+            self.current_tool = "pheromone_food"
+            print("✓ Tool: Food Pheromone (Red)")
+        elif event.key == pygame.K_q:  # Q for nest pheromone (near P)
+            self.current_tool = "pheromone_nest"
+            print("✓ Tool: Nest Pheromone (Blue)")
         elif event.key == pygame.K_a:
             self.current_tool = "ant"
             print("✓ Tool: Ant")
@@ -54,7 +61,7 @@ class Editor:
         elif event.key == pygame.K_c:
             self.clear_all_obstacles()
             print("✓ Cleared all obstacles")
-        elif event.key == pygame.K_p:
+        elif event.key == pygame.K_t:
             self.show_preview = not self.show_preview
             print(f"✓ Brush preview: {'ON' if self.show_preview else 'OFF'}")
         else:
@@ -111,6 +118,7 @@ class Editor:
         self.last_pos = current_pos
         
         # Apply tool based on mouse button
+        # Apply tool based on mouse button
         if mouse_button == 1:  # Left click - draw
             if self.current_tool == "obstacle":
                 self.draw_obstacle_circle(col, row, True)
@@ -118,14 +126,22 @@ class Editor:
                 self.place_food_cluster(col, row)
             elif self.current_tool == "ant":
                 self.place_ant(col, row)
+            elif self.current_tool == "pheromone_food":
+                self.draw_pheromone_circle(col, row, "to_food", True)
+            elif self.current_tool == "pheromone_nest":
+                self.draw_pheromone_circle(col, row, "to_nest", True)
                 
         elif mouse_button == 3:  # Right click - erase only current tool type
             if self.current_tool == "obstacle":
-                self.draw_obstacle_circle(col, row, False)  # Remove obstacles
+                self.draw_obstacle_circle(col, row, False)
             elif self.current_tool == "food":
-                self.erase_food_circle(col, row)  # Remove only food clusters
+                self.erase_food_circle(col, row)
             elif self.current_tool == "ant":
-                self.erase_ants_in_circle(col, row)  # Remove only ants
+                self.erase_ants_in_circle(col, row)
+            elif self.current_tool == "pheromone_food":
+                self.draw_pheromone_circle(col, row, "to_food", False)
+            elif self.current_tool == "pheromone_nest":
+                self.draw_pheromone_circle(col, row, "to_nest", False)
 
     def erase_food_circle(self, center_col, center_row):
         """Erase only food clusters in a circular area (doesn't erase obstacles or ants)."""
@@ -237,6 +253,38 @@ class Editor:
             new_ant = Ant(self.grid, col, row)
             self.ants.append(new_ant)
             print(f"✓ Placed ant at ({col}, {row}) - Total ants: {len(self.ants)}")
+
+    def draw_pheromone_circle(self, center_col, center_row, p_type, add_pheromone=True):
+        """Draw/erase pheromones in a circular brush."""
+        for r in range(self.brush_size):
+            radius = r
+            for angle in range(0, 360, 10):
+                rad = math.radians(angle)
+                col = int(center_col + radius * math.cos(rad))
+                row = int(center_row + radius * math.sin(rad))
+                
+                if 0 <= col < self.grid.cols and 0 <= row < self.grid.rows:
+                    if add_pheromone:
+                        # Add full strength pheromone of the selected type
+                        strength = Config.PHEROMONE_MAX_STRENGTH
+                        self.grid.set_pheromone(col, row, p_type, strength)
+                    else:
+                        # REMOVE BOTH TYPES when erasing
+                        self.grid.set_pheromone(col, row, "to_food", 0.0)
+                        self.grid.set_pheromone(col, row, "to_nest", 0.0)
+        
+        # Fill the center
+        if add_pheromone:
+            strength = Config.PHEROMONE_MAX_STRENGTH
+            self.grid.set_pheromone(center_col, center_row, p_type, strength)
+        else:
+            # REMOVE BOTH TYPES in center when erasing
+            self.grid.set_pheromone(center_col, center_row, "to_food", 0.0)
+            self.grid.set_pheromone(center_col, center_row, "to_nest", 0.0)
+        
+        p_type_name = "Food" if p_type == "to_food" else "Nest"
+        action = "Added" if add_pheromone else "Removed ALL"
+        print(f"✓ {action} {p_type_name if add_pheromone else ''}pheromones in radius {self.brush_size}")
     
     def clear_all_obstacles(self):
         """Clear all obstacles from the grid."""

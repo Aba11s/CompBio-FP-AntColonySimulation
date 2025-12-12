@@ -8,14 +8,14 @@ class Config:
     SHOW_GRID_LINES = True  # Toggle grid visualization
     
     # ===== GRID =====
-    CELL_SIZE = 10  
+    CELL_SIZE = 7  
     # Derived values (will be calculated)
     # GRID_COLS = SCREENWIDTH // CELL_SIZE
     # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
     
     # ===== ANT COLONY =====
     NEST_RADIUS = 3
-    NUM_ANTS = 1  # Few ants for testing
+    NUM_ANTS = 200  # Few ants for testing
 
     # ===== FOOD SETTINGS =====
     INITIAL_FOOD_CLUSTERS = 1
@@ -40,7 +40,7 @@ class Config:
     # ===== ACO PARAMETERS =====
     # These control the ACO probability formula: (pheromone^ALPHA) * (heuristic^BETA)
     ALPHA = 1.0  # Pheromone importance
-    BETA = 2.0   # Heuristic importance
+    BETA = 3.0   # Heuristic importance
     EVAPORATION_RATE = 0.1  # Pheromone evaporation per frame
     DIFFUSION_RATE = 0.1    # Pheromone spread to neighbors
     EVAPORATION_INTERVAL = 10
@@ -49,7 +49,7 @@ class Config:
     # ===== PHEROMONE SETTINGS =====
     PHEROMONE_MAX_DROP_STRENGTH = 25.0
     PHEROMONE_MIN_DROP_STRENGTH = 0.0
-    PHEROMONE_DECAY_RATE = 0.99
+    PHEROMONE_DECAY_RATE = 0.995
     PHEROMONE_MAX_STRENGTH = 100.0
     TO_FOOD_PHEROMONE_COLOR = (255, 0, 0)    # RED
     TO_NEST_PHEROMONE_COLOR = (0, 0, 255)  # BLUE
