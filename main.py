@@ -49,7 +49,7 @@ class AntSimulation:
         # State
         self.frame_count = 0
         self.running = True
-        self.paused = False
+        self.paused = True
 
         # Optimization
         self.ph_counter = 0
@@ -199,38 +199,10 @@ class AntSimulation:
                         ant.col = Config.NEST_COL
                         ant.row = Config.NEST_ROW
                     print("\n✓ All ants reset to nest")
-                elif event.key == pygame.K_f:
-                    # Print food heuristic grid
-                    self.print_full_heuristic_grid("food")
-                elif event.key == pygame.K_n:
-                    # Print nest heuristic grid
-                    self.print_full_heuristic_grid("nest")
-                elif event.key == pygame.K_h:
-                    # Print both heuristics around nest
-                    self.print_nest_heuristics()
                 elif event.key == pygame.K_SPACE:
                     # Toggle pause
                     self.paused = not self.paused
                     print(f"\n✓ Simulation {'PAUSED' if self.paused else 'RUNNING'}")
-                elif event.key == pygame.K_1:
-                    # Switch to heuristic movement
-                    self.movement_mode = "heuristic"
-                    print(f"\n✓ Movement: HEURISTIC (β={Config.BETA})")
-                    print("Ants should move toward food clusters")
-                elif event.key == pygame.K_2:
-                    # Switch to random movement
-                    self.movement_mode = "random"
-                    print(f"\n✓ Movement: RANDOM")
-                    print("Ants move randomly for comparison")
-                elif event.key == pygame.K_d:
-                    # Print debug info for first ant
-                    if self.ants:
-                        info = self.ants[0].get_debug_info()
-                        print(f"\n=== Ant 0 Debug ===")
-                        print(f"Position: {info['position']}")
-                        print(f"Steps taken: {info['steps']}")
-                        print(f"Current food heuristic: {info['heuristic']:.3f}")
-                        print(f"At food cluster: {info['at_food']}")
     
     # Update HUD to show only FPS
     def _draw_hud(self):

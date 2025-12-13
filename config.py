@@ -18,10 +18,9 @@ class Config:
     NUM_ANTS = 200  # Few ants for testing
 
     # ===== FOOD SETTINGS =====
-    INITIAL_FOOD_CLUSTERS = 1
     FOOD_CLUSTER_RADIUS = 10
     FOOD_CLUSTER_DENSITY = 1
-    FOOD_PER_CELL = 10
+    FOOD_PER_CELL = 5
     FOOD_CLUSTER_INFLUENCE_RADIUS_MULT = 4
     FOOD_COLOR = (0, 180, 0)  # Green
     
@@ -33,8 +32,7 @@ class Config:
     ]
     
     # ===== ANT BEHAVIOR =====
-    ANT_STRAIGHTNESS_BIAS = 1
-    ANT_COLOR = (0, 0, 0)  # White
+    ANT_COLOR = (0, 0, 0)  # BLACK
     ANT_WITH_FOOD_COLOR = (0, 255, 0)  # Green
     
     # ===== ACO PARAMETERS =====
@@ -47,9 +45,9 @@ class Config:
     DIFFUSION_INTERVAL = 10
     
     # ===== PHEROMONE SETTINGS =====
-    PHEROMONE_MAX_DROP_STRENGTH = 25.0
+    PHEROMONE_MAX_DROP_STRENGTH = 15.0
     PHEROMONE_MIN_DROP_STRENGTH = 0.0
-    PHEROMONE_DECAY_RATE = 0.995
+    PHEROMONE_DECAY_RATE = 0.99
     PHEROMONE_MAX_STRENGTH = 100.0
     TO_FOOD_PHEROMONE_COLOR = (255, 0, 0)    # RED
     TO_NEST_PHEROMONE_COLOR = (0, 0, 255)  # BLUE
