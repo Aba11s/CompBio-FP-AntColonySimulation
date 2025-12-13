@@ -2,10 +2,9 @@ class Config:
     # ===== WINDOW & RENDERING =====
     SCREENWIDTH = 700
     SCREENHEIGHT = 700
-    FPS = 60
+    FPS = 30
     BACKGROUND_COLOR = (175, 150, 120)
     GRID_LINE_COLOR = (75, 75, 75)
-    SHOW_GRID_LINES = True  # Toggle grid visualization
     
     # ===== GRID =====
     CELL_SIZE = 7  
@@ -47,7 +46,7 @@ class Config:
     # ===== PHEROMONE SETTINGS =====
     PHEROMONE_MAX_DROP_STRENGTH = 15.0
     PHEROMONE_MIN_DROP_STRENGTH = 0.0
-    PHEROMONE_DECAY_RATE = 0.99
+    PHEROMONE_DECAY_RATE = 0.995
     PHEROMONE_MAX_STRENGTH = 100.0
     TO_FOOD_PHEROMONE_COLOR = (255, 0, 0)    # RED
     TO_NEST_PHEROMONE_COLOR = (0, 0, 255)  # BLUE
@@ -60,15 +59,16 @@ class Config:
     
     # ===== OBSTACLES =====
     OBSTACLE_COLOR = (100, 70, 55)
-    
-    # ===== VISUALIZATION =====
-    DRAW_PHEROMONES = True
-    ANT_SIZE_FACTOR = 0.7  # Relative to cell size (0.0-1.0)
+
+    # ===== SHOW =====
+    SHOW_PHEROMONES = True
+    SHOW_ANTS = True
+    SHOW_GRID_LINES = False
     
     # ===== DEBUG =====
     PRINT_STATS_EVERY = 100  # Frames (0 to disable)
-    DRAW_ANT_VISION = False
-    DRAW_PATH_DEBUG = False
+    
+
     
     @classmethod
     def calculate_derived(cls):

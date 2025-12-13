@@ -26,6 +26,7 @@ class AntSimulation:
         self.screen = pygame.display.set_mode((Config.SCREENWIDTH, Config.SCREENHEIGHT))
         pygame.display.set_caption("Ant Colony Simulation - Heuristics Test")
         self.clock = pygame.time.Clock()
+        self.current_fps = Config.FPS
         
         # Create grid
         self.grid = Grid(Config.SCREENWIDTH, Config.SCREENHEIGHT, Config.CELL_SIZE)
@@ -45,6 +46,11 @@ class AntSimulation:
         # Editor setup
         self.editor = Editor(self.grid, self.ants)
         self.editor_mode = False  # Toggle with key
+
+        # visibility
+        self.show_ants = Config.SHOW_ANTS
+        self.show_pheromones = Config.SHOW_PHEROMONES  # Start with config value
+        self.show_grid_lines = Config.SHOW_GRID_LINES   # Start with config value
         
         # State
         self.frame_count = 0
@@ -137,9 +143,6 @@ class AntSimulation:
     
     def update(self):
         """Update simulation with optimized pheromone updates."""
-        total_heuristic = 0
-        ants_at_food = 0
-        
         # Grid updates
         self.grid.update_food_clusters()
         
@@ -196,13 +199,29 @@ class AntSimulation:
                 elif event.key == pygame.K_r:
                     # Reset all ants to nest
                     for ant in self.ants:
-                        ant.col = Config.NEST_COL
-                        ant.row = Config.NEST_ROW
+                        ant.reset()
                     print("\n✓ All ants reset to nest")
                 elif event.key == pygame.K_SPACE:
                     # Toggle pause
                     self.paused = not self.paused
                     print(f"\n✓ Simulation {'PAUSED' if self.paused else 'RUNNING'}")
+
+                elif event.key == pygame.K_a:  # Toggle ants
+                    self.show_ants = not self.show_ants
+                    print(f"\n✓ Ants: {'SHOWN' if self.show_ants else 'HIDDEN'}")
+                elif event.key == pygame.K_p:  # Toggle pheromones
+                    self.show_pheromones = not self.show_pheromones
+                    print(f"\n✓ Pheromones: {'SHOWN' if self.show_pheromones else 'HIDDEN'}")
+                elif event.key == pygame.K_g:  # Toggle grid lines
+                    self.show_grid_lines = not self.show_grid_lines
+                    print(f"\n✓ Grid lines: {'SHOWN' if self.show_grid_lines else 'HIDDEN'}")
+
+                elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:  # Increase speed
+                    self.current_fps = min(60, self.current_fps + 5)
+                    print(f"\n✓ Speed: {self.current_fps} FPS")
+                elif event.key == pygame.K_MINUS:  # Decrease speed
+                    self.current_fps = max(10, self.current_fps - 5)
+                    print(f"\n✓ Speed: {self.current_fps} FPS")
     
     # Update HUD to show only FPS
     def _draw_hud(self):
@@ -250,11 +269,11 @@ class AntSimulation:
         self.screen.fill(Config.BACKGROUND_COLOR)
         
         # Draw pheromones FIRST (background) - Grid handles its own drawing
-        if self.movement_mode == "aco" and Config.DRAW_PHEROMONES:
+        if self.movement_mode == "aco" and self.show_pheromones:
             self.grid.draw_pheromones(self.screen)
         
         # Draw grid lines if enabled
-        if Config.SHOW_GRID_LINES:
+        if self.show_grid_lines:
             self._draw_grid_lines()
         
         self.grid.draw_obstacles(self.screen, Config.OBSTACLE_COLOR)
@@ -262,8 +281,8 @@ class AntSimulation:
         
         # Draw ants (on top)
         for ant in self.ants:
-            ant.draw(self.screen)
-            ...
+            if self.show_ants:
+                ant.draw(self.screen)
 
         self._draw_nest()
         
@@ -303,7 +322,7 @@ class AntSimulation:
             self.draw()
             
             # Control frame rate
-            self.clock.tick(Config.FPS)
+            self.clock.tick(self.current_fps)
         
         # Cleanup
         pygame.quit()

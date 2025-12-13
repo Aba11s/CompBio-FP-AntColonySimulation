@@ -252,10 +252,10 @@ class FoodCluster:
                                 (food_x, food_y, food_size, food_size))
         
         # Draw cluster info only if we have at least one food cell drawn
-        if last_x is not None and last_y is not None:
+        '''if last_x is not None and last_y is not None:
             font = pygame.font.Font(None, 20)
             text = font.render(f"Food: {self.total_food}", True, (0, 0, 0))
-            surface.blit(text, (int(last_x) - 20, int(last_y) - 30))
+            surface.blit(text, (int(last_x) - 20, int(last_y) - 30))''''''
         
         # Draw Gaussian info'''
         '''info_text = font.render(f"σ: {self.gaussian_std:.1f}", True, (100, 100, 100))

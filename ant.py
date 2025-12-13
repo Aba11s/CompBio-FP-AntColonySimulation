@@ -80,10 +80,10 @@ class Ant:
         return neighbors
     
     def _get_allowed_neighbors(self):
-        """Return neighbors with their actual distances."""
+        """Return neighbors with equal cost (all moves count as 1)."""
         if self.heading is None:
             neighbors = self._get_valid_neighbors()
-            return [(nc, nr, math.sqrt(dx*dx + dy*dy)) for nc, nr, dx, dy in neighbors]
+            return [(nc, nr, 1.0) for nc, nr, dx, dy in neighbors]  # All moves cost 1
         
         turning_patterns = {
             (-1, -1): [(-1, -1), (0, -1), (-1, 0)],
@@ -101,9 +101,8 @@ class Ant:
         
         for nc, nr, dx, dy in self._get_valid_neighbors():
             if (dx, dy) in allowed_offsets:
-                # Calculate actual Euclidean distance
-                distance = math.sqrt(dx*dx + dy*dy)  # 1.0 or 1.414
-                allowed_neighbors.append((nc, nr, distance))
+                # CHANGE: All moves have distance/cost of 1
+                allowed_neighbors.append((nc, nr, 1.0))  # Changed from math.sqrt(dx*dx + dy*dy)
         
         return allowed_neighbors
     
@@ -278,7 +277,7 @@ class Ant:
             h = (heuristic + 0.01) ** Config.BETA
             
             # Combine and normalize by distance (prefer shorter moves)
-            score = (p * h) / max(dist, 0.001)
+            score = (p * h)
             scores.append(score)
         
         # NUMERICALLY STABLE SOFTMAX with temperature
@@ -409,6 +408,12 @@ class Ant:
         
         return distance <= Config.NEST_RADIUS
     
+    def reset(self):
+        """Resets ants to nest. Resets to base init states"""
+        self.col = Config.NEST_COL
+        self.row = Config.NEST_ROW
+        self.has_food = None
+        self.current_strength = self.base_strength
 
 
 

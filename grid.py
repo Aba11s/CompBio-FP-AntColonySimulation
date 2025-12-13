@@ -180,7 +180,7 @@ class Grid:
         Draw both pheromone fields onto the given surface.
         Called from main simulation loop.
         """
-        if not Config.DRAW_PHEROMONES:
+        if not Config.SHOW_PHEROMONES:
             return
             
         # Create temporary surfaces for alpha blending
@@ -228,38 +228,6 @@ class Grid:
         # Blend onto main surface (food under nest for visual clarity)
         surface.blit(food_surface, (0, 0))
         surface.blit(nest_surface, (0, 0))
-
-    def draw_pheromones_gradient(self, surface):
-        """
-        Draw pheromones with gradient effect (darker = stronger).
-        """
-        for row in range(self.rows):
-            for col in range(self.cols):
-                # Combine both pheromone types (optional)
-                food_strength = self.pheromone_to_food[row][col]
-                nest_strength = self.pheromone_to_nest[row][col]
-                
-                if food_strength > 0 or nest_strength > 0:
-                    # Calculate blended color
-                    food_factor = food_strength / Config.PHEROMONE_MAX_STRENGTH
-                    nest_factor = nest_strength / Config.PHEROMONE_MAX_STRENGTH
-                    
-                    # Blend red and blue based on relative strengths
-                    r = int(Config.TO_FOOD_PHEROMONE_COLOR[0] * food_factor)
-                    g = 0  # No green in this color scheme
-                    b = int(Config.TO_NEST_PHEROMONE_COLOR[2] * nest_factor)
-                    
-                    # Brightness based on total strength
-                    total_factor = min(food_factor + nest_factor, 1.0)
-                    alpha = int(100 + total_factor * 155)  # 100-255 alpha
-                    
-                    color = (r, g, b, alpha)
-                    x = col * self.cell_size
-                    y = row * self.cell_size
-                    
-                    cell_surface = pygame.Surface((self.cell_size, self.cell_size), pygame.SRCALPHA)
-                    pygame.draw.rect(cell_surface, color, (0, 0, self.cell_size, self.cell_size))
-                    surface.blit(cell_surface, (x, y))
 
     # Food Methods
 
@@ -441,7 +409,7 @@ class Grid:
                         continue
                     
                     dx = c2 - cluster.grid_x
-                    dy = r2 - cluster.grid_y
+                    dy = r2 - cluster.grid_y    
                     distance = math.sqrt(dx*dx + dy*dy)
                     
                     if distance <= influence_radius:
