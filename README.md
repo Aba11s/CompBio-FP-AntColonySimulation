@@ -1,13 +1,13 @@
 (an attempt in) Ant Colony Simulation in PyGame using the Ant Colony Optimization (ACO) Model   
-
-Computational Biology Final Project
-
-Members:
-B.Bellion Leander
-C.Darren Muljono
-
-How to run:
-run main.py
+  
+Computational Biology Final Project  
+  
+Members:  
+B.Bellion Leander  
+C.Darren Muljono  
+  
+How to run:  
+run main.py  
   
 Controls:  
 TAB - switch mode (editor/view)  
