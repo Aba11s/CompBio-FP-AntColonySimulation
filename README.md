@@ -1,5 +1,4 @@
 (an attempt in) Ant Colony Simulation in PyGame using the Ant Colony Optimization (ACO) Model 
-
 CONTROLS:
 TAB - switch mode (editor/view)
 
