@@ -102,7 +102,6 @@ class Editor:
     def apply_tool_at_position(self, screen_pos, mouse_button):
         """Apply current tool at mouse position."""
         col, row = self.grid.world_to_grid(screen_pos[0], screen_pos[1])
-        print(f"APPLYING at ({col}, {row}) with tool: {self.current_tool}, button: {mouse_button}")
         
         # Skip if out of bounds
         if not (0 <= col < self.grid.cols and 0 <= row < self.grid.rows):

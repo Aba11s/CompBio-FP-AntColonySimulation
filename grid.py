@@ -20,7 +20,11 @@ class Grid:
         self.obstacles = [[False] * self.cols for _ in range(self.rows)]
 
         self.nest_position = None
+        self.nest_cells = []
+
         self.food_clusters = []
+        self.food_dropped = 0
+        self.food_dropped_this_frame = 0
 
     # COORDINATE CONVERSION METHODS
     def world_to_grid(self, x, y):
@@ -57,10 +61,65 @@ class Grid:
     def set_nest_position(self, nest_col, nest_row):
         """Set nest position and update nest heuristic."""
         self.nest_position = (nest_col, nest_row)
+        
+        # Calculate which cells are in nest radius
+        self._update_nest_cells()
+        
+        # Set max pheromone in nest area
+        self._set_nest_pheromones()
+        
+        # Update nest heuristic
         self.update_heuristic_to_nest()
+        
         print(f"Grid: Nest position set to ({nest_col}, {nest_row})")
+        print(f"Grid: {len(self.nest_cells)} cells in nest radius")
     
-    # INDIVIDUAL ACCESS METHODS
+    def _update_nest_cells(self):
+        """Calculate which cells are within nest radius."""
+        if self.nest_position is None:
+            self.nest_cells = []
+            return
+            
+        nest_col, nest_row = self.nest_position
+        self.nest_cells = []
+        
+        # Calculate bounding box for efficiency
+        min_col = max(0, nest_col - Config.NEST_PHEROMONE_RADIUS)
+        max_col = min(self.cols - 1, nest_col + Config.NEST_PHEROMONE_RADIUS)
+        min_row = max(0, nest_row - Config.NEST_PHEROMONE_RADIUS)
+        max_row = min(self.rows - 1, nest_row + Config.NEST_PHEROMONE_RADIUS)
+        
+        for col in range(min_col, max_col + 1):
+            for row in range(min_row, max_row + 1):
+                # Calculate distance from nest center
+                dx = col - nest_col
+                dy = row - nest_row
+                distance = math.sqrt(dx*dx + dy*dy)
+                
+                if distance <= Config.NEST_PHEROMONE_RADIUS:
+                    self.nest_cells.append((col, row))
+    
+    def _set_nest_pheromones(self):
+        """Set maximum pheromone values in nest area."""
+        if not self.nest_cells:
+            return
+            
+        for col, row in self.nest_cells:
+            # Set both types of pheromones to maximum at nest
+            self.pheromone_to_food[row][col] = Config.NEST_PHEROMONE_STRENGTH
+            self.pheromone_to_nest[row][col] = Config.NEST_PHEROMONE_STRENGTH
+    
+    def _is_in_nest_radius(self, col, row):
+        """Check if a cell is within nest pheromone radius."""
+        if self.nest_position is None:
+            return False
+            
+        nest_col, nest_row = self.nest_position
+        dx = col - nest_col
+        dy = row - nest_row
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        return distance <= Config.NEST_PHEROMONE_RADIUS
     
     # Pheromone Methods
     def get_pheromone_to_food(self, grid_col, grid_row):
@@ -173,6 +232,25 @@ class Grid:
         
         self.pheromone_to_food = new_food
         self.pheromone_to_nest = new_nest
+
+    def _update_pheromones(self, should_evaporate=True, should_diffuse=True):
+        """
+        Update all pheromone operations in one place.
+        
+        Args:
+            should_evaporate: If True, apply evaporation
+            should_diffuse: If True, apply diffusion
+        """
+        # Apply evaporation if needed
+        if should_evaporate:
+            self._evaporate_pheromones()  # Rename the old method
+        
+        # Apply diffusion if needed
+        if should_diffuse and Config.DIFFUSION_RATE > 0:
+            self._diffuse_pheromones()  # Rename the old method
+        
+        # Always reset nest pheromones to maximum
+        self._set_nest_pheromones()
 
     
     def draw_pheromones(self, surface):

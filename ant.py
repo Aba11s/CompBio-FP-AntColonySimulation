@@ -10,13 +10,18 @@ class Ant:
         Initialize an ant at a specific grid position.
         If no position given, places ant at a random valid cell.
         """
+        self.start_col=start_col
+        self.start_row=start_row
+
         self.grid = grid
         self.has_food = False
         self.just_changed_state = False
         
         # ACO parameters
-        self.alpha = 1.0  # Pheromone importance (0 for heuristic-only)
-        self.beta = 2.0   # Heuristic importance
+        self.alpha = Config.ALPHA  # Pheromone importance (0 for heuristic-only)
+        self.beta = Config.BETA   # Heuristic importance
+        self.temperature = Config.TEMPERATURE
+        self.explore_chance = Config.EXPLORE_CHANCE
 
         # Pheromone drop strength
         self.base_strength = Config.PHEROMONE_MAX_DROP_STRENGTH
@@ -123,10 +128,6 @@ class Ant:
             self.heading = (dx, dy)
     
     def move_random(self):
-        """
-        Random movement accounting for diagonal distances.
-        LEGACY CODE, FOR TESTING ONLY
-        """
         # Get neighbors with distances
         weighted_neighbors = self._get_allowed_neighbors()
         
@@ -169,66 +170,8 @@ class Ant:
         self._update_heading_from_move()
         
         return True
- 
-    def move_with_heuristic(self, explore_chance=0.2, temperature=0.1):
-        """Minimal heuristic movement with food pickup/dropoff."""
-        
-        #print(self.has_food)
-        # FIRST: Drop food if at nest
-        if self.has_food:
-            self._drop_food()
-        
-        # SECOND: Pick up food if available (only if not carrying)
-        if not self.has_food:
-            self._pickup_food()
-        
-        # THIRD: Move based on current state
-        if random.random() < explore_chance:
-            return self.move_random()
-        
-        # Get valid moves
-        moves = self._get_allowed_neighbors()
-        if not moves:
-            moves = [(nc, nr, math.sqrt(dx*dx + dy*dy)) 
-                    for nc, nr, dx, dy in self._get_valid_neighbors()]
-        
-        if not moves:
-            return False
-        
-        # Choose heuristic based on food state
-        if self.has_food:
-            # Follow nest heuristic back to nest
-            probs = []
-            for col, row, dist in moves:
-                h = self.grid.get_heuristic_to_nest(col, row)  # NEST heuristic!
-                probs.append(math.exp(h / temperature) / max(dist, 0.001))
-        else:
-            # Follow food heuristic to find food
-            probs = []
-            for col, row, dist in moves:
-                h = self.grid.get_heuristic_to_food(col, row)  # FOOD heuristic!
-                probs.append(math.exp(h / temperature) / max(dist, 0.001))
-        
-        # Choose and move (same as before)
-        idx = random.choices(range(len(moves)), weights=probs, k=1)[0]
-        col, row, dist = moves[idx]
-        
-        # Update position
-        self.col, self.row = col, row
-        self.distance_traveled += dist
-        self.steps_taken += 1
-        self.path.append((col, row))
-        
-        # Update heading
-        if len(self.path) >= 2:
-            prev = self.path[-2]
-            dx, dy = col - prev[0], row - prev[1]
-            if dx or dy:
-                self.heading = (dx, dy)
-        
-        return True
     
-    def move_aco(self, explore_chance=0.05, temperature=0.1):
+    def move_aco(self):
         """
         Full ACO movement with pheromones AND heuristics.
         Uses temperature for softmax probability distribution.
@@ -245,7 +188,7 @@ class Ant:
             self._pickup_food()
         
         # Small chance to explore randomly
-        if random.random() < explore_chance:
+        if random.random() < self.explore_chance:
             return self.move_random()
         
         # Get allowed moves (respects heading restrictions)
@@ -273,8 +216,8 @@ class Ant:
                 heuristic = self.grid.get_heuristic_to_food(col, row)
             
             # ACO attractiveness score
-            p = (pheromone + 0.01) ** Config.ALPHA
-            h = (heuristic + 0.01) ** Config.BETA
+            p = (pheromone + 0.01) ** self.alpha
+            h = (heuristic + 0.01) ** self.beta
             
             # Combine and normalize by distance (prefer shorter moves)
             score = (p * h)
@@ -283,8 +226,8 @@ class Ant:
         # NUMERICALLY STABLE SOFTMAX with temperature
         # Use log-sum-exp trick to prevent overflow
         
-        if temperature <= 0:
-            temperature = 0.001  # Avoid division by zero
+        if self.temperature <= 0:
+            self.temperature = 0.001  # Avoid division by zero
         
         # Find maximum score for numerical stability
         max_score = max(scores)
@@ -294,7 +237,7 @@ class Ant:
             probs = [1.0 / len(scores)] * len(scores)
         else:
             # Subtract max_score for numerical stability
-            scaled_scores = [(s - max_score) / temperature for s in scores]
+            scaled_scores = [(s - max_score) / self.temperature for s in scores]
             
             # Cap very large negative values to prevent underflow
             scaled_scores = [max(s, -50) for s in scaled_scores]  # exp(-50) ≈ 1.9e-22
@@ -389,10 +332,16 @@ class Ant:
         """Drop food at nest."""
         if self.has_food and self._at_nest():
             self.has_food = False
-            # Optionally track total food collected
-            #print(f"✓ Ant delivered food to nest")  # Optional debug
             self._reset_strength()
             self._reverse_direction()
+            
+            if self.start_col is not None and self.start_row is not None:
+                self.col = self.start_col
+                self.row = self.start_row
+
+            self.grid.food_dropped += 1
+            self.grid.food_dropped_this_frame += 1
+
             return True
         return False
 

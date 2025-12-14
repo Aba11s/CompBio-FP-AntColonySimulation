@@ -2,7 +2,7 @@ class Config:
     # ===== WINDOW & RENDERING =====
     SCREENWIDTH = 700
     SCREENHEIGHT = 700
-    FPS = 30
+    FPS = 60
     BACKGROUND_COLOR = (175, 150, 120)
     GRID_LINE_COLOR = (75, 75, 75)
     
@@ -13,40 +13,36 @@ class Config:
     # GRID_ROWS = SCREENHEIGHT // CELL_SIZE
     
     # ===== ANT COLONY =====
+    NEST_PHEROMONE_STRENGTH = 100.0  # Always maximum at nest
+    NEST_PHEROMONE_RADIUS = 3
     NEST_RADIUS = 3
     NUM_ANTS = 200  # Few ants for testing
 
     # ===== FOOD SETTINGS =====
     FOOD_CLUSTER_RADIUS = 10
     FOOD_CLUSTER_DENSITY = 1
-    FOOD_PER_CELL = 5
-    FOOD_CLUSTER_INFLUENCE_RADIUS_MULT = 4
+    FOOD_PER_CELL = 999
+    FOOD_CLUSTER_INFLUENCE_RADIUS_MULT = 10
     FOOD_COLOR = (0, 180, 0)  # Green
-    
-    # ===== FOOD FOR TESTING =====
-    TEST_FOOD_POSITIONS = [
-        (10, 10)  # Food cluster 1
-        # Food cluster 2
-          # Food cluster 3
-    ]
     
     # ===== ANT BEHAVIOR =====
     ANT_COLOR = (0, 0, 0)  # BLACK
     ANT_WITH_FOOD_COLOR = (0, 255, 0)  # Green
     
     # ===== ACO PARAMETERS =====
-    # These control the ACO probability formula: (pheromone^ALPHA) * (heuristic^BETA)
     ALPHA = 1.0  # Pheromone importance
-    BETA = 3.0   # Heuristic importance
-    EVAPORATION_RATE = 0.1  # Pheromone evaporation per frame
-    DIFFUSION_RATE = 0.1    # Pheromone spread to neighbors
-    EVAPORATION_INTERVAL = 10
-    DIFFUSION_INTERVAL = 10
+    BETA = 2.0   # Heuristic importance
+    TEMPERATURE = 0.1
+    EXPLORE_CHANCE = 0.1
     
     # ===== PHEROMONE SETTINGS =====
+    EVAPORATION_RATE = 0.1  
+    DIFFUSION_RATE = 0.25    
+    EVAPORATION_INTERVAL = 10
+    DIFFUSION_INTERVAL = 10
     PHEROMONE_MAX_DROP_STRENGTH = 15.0
     PHEROMONE_MIN_DROP_STRENGTH = 0.0
-    PHEROMONE_DECAY_RATE = 0.995
+    PHEROMONE_DECAY_RATE = 0.98
     PHEROMONE_MAX_STRENGTH = 100.0
     TO_FOOD_PHEROMONE_COLOR = (255, 0, 0)    # RED
     TO_NEST_PHEROMONE_COLOR = (0, 0, 255)  # BLUE
@@ -67,8 +63,13 @@ class Config:
     
     # ===== DEBUG =====
     PRINT_STATS_EVERY = 100  # Frames (0 to disable)
-    
 
+    # Metrics tracking
+    METRICS_ENABLED = True
+    METRICS_FONT_SIZE = 20
+    METRICS_COLOR = (0, 0, 0)  # Black
+    METRICS_BACKGROUND = (240, 240, 240, 200)  # Semi-transparent light gray
+    
     
     @classmethod
     def calculate_derived(cls):

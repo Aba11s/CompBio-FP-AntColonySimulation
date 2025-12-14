@@ -47,10 +47,18 @@ class AntSimulation:
         self.editor = Editor(self.grid, self.ants)
         self.editor_mode = False  # Toggle with key
 
+        # Tuning mode
+        self.tuning_mode = False
+        self.tuning_parameter = "alpha"  # Options: "alpha", "beta", "temperature", "explore_chance"
+        self.tuning_step = 0.1  
+
         # visibility
         self.show_ants = Config.SHOW_ANTS
         self.show_pheromones = Config.SHOW_PHEROMONES  # Start with config value
         self.show_grid_lines = Config.SHOW_GRID_LINES   # Start with config value
+
+        # diffuse state
+        self.diffuse = False
         
         # State
         self.frame_count = 0
@@ -60,6 +68,83 @@ class AntSimulation:
         # Optimization
         self.ph_counter = 0
         self.df_counter = 0
+
+        # Metrics tracking
+        self.metrics = {
+            'ants_with_food': 0,
+            'ants_without_food': 0,
+            'total_food_delivered': 0,
+            'food_delivered_per_second': 0.0,
+            'frames_since_last_reset': 0,
+            'last_delivery_time': 0,
+            'delivery_times': []  # Track timestamps for rate calculation
+        }
+        
+        # Metrics display
+        self.show_metrics = True
+        self.metrics_font = pygame.font.Font(None, Config.METRICS_FONT_SIZE)
+        self.metrics_update_interval = Config.FPS  # Update every second
+        self.metrics_counter = 0
+
+    def _update_metrics(self):
+        """Update all metrics."""
+        # Count ants with and without food
+        with_food = 0
+        without_food = 0
+        
+        for ant in self.ants:
+            if ant.has_food:
+                with_food += 1
+            else:
+                without_food += 1
+        
+        self.metrics['ants_with_food'] = with_food
+        self.metrics['ants_without_food'] = without_food
+        
+        # Get total food delivered from grid
+        self.metrics['total_food_delivered'] = self.grid.food_dropped
+        
+        # Calculate current time
+        current_time = self.frame_count / Config.FPS
+        
+        # Update rate every second
+        self.metrics_counter += 1
+        if self.metrics_counter >= self.metrics_update_interval:
+            # Remove old deliveries (older than 10 seconds)
+            self.metrics['delivery_times'] = [
+                t for t in self.metrics['delivery_times'] 
+                if current_time - t <= 10.0
+            ]
+            
+            # Calculate rate based on deliveries in last 10 seconds
+            if self.metrics['delivery_times']:
+                oldest_time = min(self.metrics['delivery_times'])
+                time_window = current_time - oldest_time
+                
+                if time_window > 1.0:  # Need at least 1 second of data
+                    self.metrics['food_delivered_per_second'] = (
+                        len(self.metrics['delivery_times']) / time_window
+                    )
+                else:
+                    # If less than 1 second, extrapolate
+                    self.metrics['food_delivered_per_second'] = (
+                        len(self.metrics['delivery_times']) / 1.0
+                    )
+            else:
+                self.metrics['food_delivered_per_second'] = 0.0
+            
+            self.metrics_counter = 0
+        
+        # Increment frame count
+        if not self.paused:
+            self.frame_count += 1
+
+    def _record_food_delivery(self):
+        """Record when food is delivered."""
+        current_time = self.frame_count / Config.FPS
+        
+        # Add current delivery time
+        self.metrics['delivery_times'].append(current_time)
     
     def _draw_food(self):
         """Draw all food clusters stored in grid."""
@@ -154,19 +239,67 @@ class AntSimulation:
             self.ph_counter = 0
 
         # OPTIMIZATION: DIFFUSE less frequently
-        '''self.df_counter += 1
-        if self.df_counter >= Config.DIFFUSION_INTERVAL:
-            self.grid.diffuse_pheromones()
-            self.df_counter = 0'''
+        self.df_counter += 1
+        if self.diffuse:
+            if self.df_counter >= Config.DIFFUSION_INTERVAL:
+                self.grid.diffuse_pheromones()
+                self.df_counter = 0
         
         # Single-threaded ant updates (fastest for <500 ants)
         for ant in self.ants:
-            if self.movement_mode == "heuristic":
-                ant.move_with_heuristic()
-            elif self.movement_mode == "random":
+            if self.movement_mode == "random":
                 ant.move_random()
             elif self.movement_mode == "aco":
                 ant.move_aco()
+
+        # Check if any food was delivered during this update
+        food_dropped_this_frame = self.grid.food_dropped_this_frame
+        if food_dropped_this_frame > 0:
+            for _ in range(food_dropped_this_frame):
+                self._record_food_delivery()
+
+        self.grid.food_dropped_this_frame = 0
+        
+        # Update metrics
+        self._update_metrics()
+
+    def _adjust_parameter(self, direction):
+        """Adjust the current tuning parameter."""
+        if direction > 0:
+            operation = "increased"
+        else:
+            operation = "decreased"
+        
+        old_value = None
+        
+        # Update all ants' parameters
+        for ant in self.ants:
+            if self.tuning_parameter == "alpha":
+                old_value = ant.alpha
+                ant.alpha = max(0.0, ant.alpha + direction * self.tuning_step)
+            elif self.tuning_parameter == "beta":
+                old_value = ant.beta
+                ant.beta = max(0.0, ant.beta + direction * self.tuning_step)
+            elif self.tuning_parameter == "temperature":
+                old_value = ant.temperature
+                ant.temperature = max(0.001, ant.temperature + direction * self.tuning_step * 0.05)
+            elif self.tuning_parameter == "explore_chance":
+                old_value = ant.explore_chance
+                ant.explore_chance = max(0.0, min(1.0, ant.explore_chance + direction * self.tuning_step * 0.1))
+        
+        if old_value is not None:
+            # Get new value from first ant
+            first_ant = self.ants[0]
+            if self.tuning_parameter == "alpha":
+                new_value = first_ant.alpha
+            elif self.tuning_parameter == "beta":
+                new_value = first_ant.beta
+            elif self.tuning_parameter == "temperature":
+                new_value = first_ant.temperature
+            elif self.tuning_parameter == "explore_chance":
+                new_value = first_ant.explore_chance
+            
+            print(f"\n✓ {self.tuning_parameter.upper()} {operation}: {old_value:.3f} → {new_value:.3f}")
             
     
     # Add a key handler to print heuristics on demand
@@ -184,7 +317,6 @@ class AntSimulation:
             
             # SECOND: If in editor mode, handle ALL events through editor
             elif self.editor_mode:
-                #print(f"EDITOR handling event: {event.type}")  # DEBUG
                 if self.editor.handle_events(event):
                     continue
                 # Editor didn't handle it, check for ESCAPE
@@ -196,32 +328,96 @@ class AntSimulation:
             elif not self.editor_mode and event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
-                elif event.key == pygame.K_r:
-                    # Reset all ants to nest
-                    for ant in self.ants:
-                        ant.reset()
-                    print("\n✓ All ants reset to nest")
-                elif event.key == pygame.K_SPACE:
-                    # Toggle pause
-                    self.paused = not self.paused
-                    print(f"\n✓ Simulation {'PAUSED' if self.paused else 'RUNNING'}")
+                    
+                # Toggle tuning mode with 'T' key
+                elif event.key == pygame.K_t:
+                    self.tuning_mode = not self.tuning_mode
+                    if self.tuning_mode:
+                        print(f"\n✓ TUNING MODE ACTIVE")
+                        print(f"Current parameter: {self.tuning_parameter}")
+                        print(f"Use 1-4 to select parameter, +/- to adjust, T to exit")
+                    else:
+                        print(f"\n✓ Tuning mode deactivated")
+                
+                # If in tuning mode, handle tuning controls
+                elif self.tuning_mode:
+                    if event.key == pygame.K_1:
+                        self.tuning_parameter = "alpha"
+                        print(f"\n✓ Now tuning: ALPHA (pheromone importance)")
+                        #self._print_current_parameters()
+                    elif event.key == pygame.K_2:
+                        self.tuning_parameter = "beta"
+                        print(f"\n✓ Now tuning: BETA (heuristic importance)")
+                        #self._print_current_parameters()
+                    elif event.key == pygame.K_3:
+                        self.tuning_parameter = "temperature"
+                        print(f"\n✓ Now tuning: TEMPERATURE (exploration)")
+                        #self._print_current_parameters()
+                    elif event.key == pygame.K_4:
+                        self.tuning_parameter = "explore_chance"
+                        print(f"\n✓ Now tuning: EXPLORE CHANCE (random movement)")
+                        #self._print_current_parameters()
+                    
+                    # Adjust parameter values
+                    elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:
+                        self._adjust_parameter(1)  # Increase
+                    elif event.key == pygame.K_MINUS:
+                        self._adjust_parameter(-1)  # Decrease
+                    
+                    # Change adjustment step size
+                    elif event.key == pygame.K_LEFTBRACKET:  # [ to decrease step
+                        self.tuning_step = max(0.01, self.tuning_step / 2)
+                        print(f"\n✓ Adjustment step decreased to: {self.tuning_step:.3f}")
+                    elif event.key == pygame.K_RIGHTBRACKET:  # ] to increase step
+                        self.tuning_step = min(1.0, self.tuning_step * 2)
+                        print(f"\n✓ Adjustment step increased to: {self.tuning_step:.3f}")
+                
+                # Regular simulation controls (only when not in tuning mode)
+                elif not self.tuning_mode:
+                    if event.key == pygame.K_r:
+                        # Reset all ants to nest and metrics
+                        for ant in self.ants:
+                            ant.reset()
 
-                elif event.key == pygame.K_a:  # Toggle ants
-                    self.show_ants = not self.show_ants
-                    print(f"\n✓ Ants: {'SHOWN' if self.show_ants else 'HIDDEN'}")
-                elif event.key == pygame.K_p:  # Toggle pheromones
-                    self.show_pheromones = not self.show_pheromones
-                    print(f"\n✓ Pheromones: {'SHOWN' if self.show_pheromones else 'HIDDEN'}")
-                elif event.key == pygame.K_g:  # Toggle grid lines
-                    self.show_grid_lines = not self.show_grid_lines
-                    print(f"\n✓ Grid lines: {'SHOWN' if self.show_grid_lines else 'HIDDEN'}")
+                        # Reset grid food counter
+                        self.grid.food_dropped = 0
+                        self.grid.food_dropped_this_frame = 0
+                                        
+                        self.metrics['total_food_delivered'] = 0
+                        self.metrics['food_delivered_per_second'] = 0.0
+                        self.metrics['delivery_times'] = []
+                        self.frame_count = 0
+                        
+                        print("\n✓ All ants reset to nest, metrics cleared")
+                    elif event.key == pygame.K_SPACE:
+                        # Toggle pause
+                        self.paused = not self.paused
+                        print(f"\n✓ Simulation {'PAUSED' if self.paused else 'RUNNING'}")
 
-                elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:  # Increase speed
-                    self.current_fps = min(60, self.current_fps + 5)
-                    print(f"\n✓ Speed: {self.current_fps} FPS")
-                elif event.key == pygame.K_MINUS:  # Decrease speed
-                    self.current_fps = max(10, self.current_fps - 5)
-                    print(f"\n✓ Speed: {self.current_fps} FPS")
+                    elif event.key == pygame.K_a:  # Toggle ants
+                        self.show_ants = not self.show_ants
+                        print(f"\n✓ Ants: {'SHOWN' if self.show_ants else 'HIDDEN'}")
+                    elif event.key == pygame.K_p:  # Toggle pheromones
+                        self.show_pheromones = not self.show_pheromones
+                        print(f"\n✓ Pheromones: {'SHOWN' if self.show_pheromones else 'HIDDEN'}")
+                    elif event.key == pygame.K_g:  # Toggle grid lines
+                        self.show_grid_lines = not self.show_grid_lines
+                        print(f"\n✓ Grid lines: {'SHOWN' if self.show_grid_lines else 'HIDDEN'}")
+
+                    elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:  # Increase speed
+                        self.current_fps = min(60, self.current_fps + 5)
+                        print(f"\n✓ Speed: {self.current_fps} FPS")
+                    elif event.key == pygame.K_MINUS:  # Decrease speed
+                        self.current_fps = max(10, self.current_fps - 5)
+                        print(f"\n✓ Speed: {self.current_fps} FPS")
+
+                    elif event.key == pygame.K_m:  # Toggle metrics display
+                        self.show_metrics = not self.show_metrics
+                        print(f"\n✓ Metrics: {'SHOWN' if self.show_metrics else 'HIDDEN'}")
+
+                    elif event.key == pygame.K_d:
+                        self.diffuse = not self.diffuse
+                        print(f"\n✓ Diffusion: {'ON' if self.diffuse else 'OFF'}")
     
     # Update HUD to show only FPS
     def _draw_hud(self):
@@ -262,6 +458,34 @@ class AntSimulation:
         pygame.draw.circle(self.screen, (255, 255, 0),  # Yellow
                          (int(center_x), int(center_y)), 
                          Config.NEST_RADIUS * Config.CELL_SIZE)
+        
+    def _draw_metrics(self):
+        """Draw metrics on screen."""
+        if not self.show_metrics:
+            return
+        
+        metrics_text = [
+            f"Ants with food: {self.metrics['ants_with_food']}",
+            f"Ants without food: {self.metrics['ants_without_food']}",
+            f"Total food delivered: {self.metrics['total_food_delivered']}",
+            f"Food/sec: {self.metrics['food_delivered_per_second']:.2f}",
+            f"Movement mode: {self.movement_mode.upper()}",
+            f"Ants: {len(self.ants)}"
+        ]
+        
+        # Create background surface for metrics
+        metrics_surface = pygame.Surface((250, len(metrics_text) * 25 + 20), pygame.SRCALPHA)
+        metrics_surface.fill(Config.METRICS_BACKGROUND)
+        
+        # Draw metrics text
+        y_offset = 10
+        for text in metrics_text:
+            text_surface = self.metrics_font.render(text, True, Config.METRICS_COLOR)
+            metrics_surface.blit(text_surface, (10, y_offset))
+            y_offset += 25
+        
+        # Draw the metrics panel on screen (top-right corner)
+        self.screen.blit(metrics_surface, (Config.SCREENWIDTH - 260, 10))
     
     def draw(self):
         """Draw everything to the screen."""
@@ -290,6 +514,10 @@ class AntSimulation:
             mouse_pos = pygame.mouse.get_pos()
             self.editor.draw_brush_preview(self.screen, mouse_pos)
         
+        # Draw metrics BEFORE HUD (so HUD is on top)
+        if self.show_metrics:
+            self._draw_metrics()
+        
         self._draw_hud()
         
         if self.editor_mode:
@@ -307,6 +535,10 @@ class AntSimulation:
         print("  H: Print heuristics around nest")
         print("  R: Reset ants to nest")
         print("  SPACE: Pause/unpause")
+        print("  M: Toggle metrics display")
+        print("  A: Toggle ants visibility")
+        print("  P: Toggle pheromones visibility")
+        print("  G: Toggle grid lines")
         print("  ESC: Quit")
         print("=======================================\n")
         
