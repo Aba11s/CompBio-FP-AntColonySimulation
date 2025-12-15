@@ -231,19 +231,12 @@ class AntSimulation:
         # Grid updates
         self.grid.update_food_clusters()
         
-        # OPTIMIZATION: Evaporate less frequently
+        # Evap & Diffusion
         self.ph_counter += 1
         if self.ph_counter >= Config.EVAPORATION_INTERVAL:
             if self.movement_mode == "aco":
-                self.grid.evaporate_pheromones()
+                self.grid.update_pheromones(True, self.diffuse)
             self.ph_counter = 0
-
-        # OPTIMIZATION: DIFFUSE less frequently
-        self.df_counter += 1
-        if self.diffuse:
-            if self.df_counter >= Config.DIFFUSION_INTERVAL:
-                self.grid.diffuse_pheromones()
-                self.df_counter = 0
         
         # Single-threaded ant updates (fastest for <500 ants)
         for ant in self.ants:

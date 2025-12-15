@@ -105,8 +105,6 @@ class Grid:
             return
             
         for col, row in self.nest_cells:
-            # Set both types of pheromones to maximum at nest
-            self.pheromone_to_food[row][col] = Config.NEST_PHEROMONE_STRENGTH
             self.pheromone_to_nest[row][col] = Config.NEST_PHEROMONE_STRENGTH
     
     def _is_in_nest_radius(self, col, row):
@@ -156,7 +154,7 @@ class Grid:
             self.pheromone_to_nest[grid_row][grid_col] = strength
         return True
     
-    def evaporate_pheromones(self):
+    def _evaporate_pheromones(self):
         """Apply evaporation to both pheromone grids."""
         for row in range(self.rows):
             for col in range(self.cols):
@@ -181,7 +179,7 @@ class Grid:
                 if self.pheromone_to_nest[row][col] < 0.01:
                     self.pheromone_to_nest[row][col] = 0
     
-    def diffuse_pheromones(self):
+    def _diffuse_pheromones(self):
         """
         Diffuse pheromones with distance-based weights.
         Closer neighbors get more pheromone than diagonals.
@@ -233,7 +231,7 @@ class Grid:
         self.pheromone_to_food = new_food
         self.pheromone_to_nest = new_nest
 
-    def _update_pheromones(self, should_evaporate=True, should_diffuse=True):
+    def update_pheromones(self, should_evaporate=True, should_diffuse=True):
         """
         Update all pheromone operations in one place.
         
