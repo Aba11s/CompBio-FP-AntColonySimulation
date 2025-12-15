@@ -231,11 +231,11 @@ class AntSimulation:
         # Grid updates
         self.grid.update_food_clusters()
         
-        # OPTIMIZATION: Evaporate less frequently
+        # Evap & Diffusion
         self.ph_counter += 1
         if self.ph_counter >= Config.EVAPORATION_INTERVAL:
             if self.movement_mode == "aco":
-                self.grid.update_pheromones(True, self.diffuse)
+                self.grid.evaporate_pheromones()
             self.ph_counter = 0
 
         

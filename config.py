@@ -27,7 +27,7 @@ class Config:
     
     # ===== ANT BEHAVIOR =====
     ANT_COLOR = (0, 0, 0)  # BLACK
-    ANT_WITH_FOOD_COLOR = (0, 255, 0)  # Green
+    ANT_WITH_FOOD_COLOR = (0, 155, 0)  # Green
     
     # ===== ACO PARAMETERS =====
     ALPHA = 1.0  # Pheromone importance
