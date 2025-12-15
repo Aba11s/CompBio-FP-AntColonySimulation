@@ -105,8 +105,6 @@ class Grid:
             return
             
         for col, row in self.nest_cells:
-            # Set both types of pheromones to maximum at nest
-            self.pheromone_to_food[row][col] = Config.NEST_PHEROMONE_STRENGTH
             self.pheromone_to_nest[row][col] = Config.NEST_PHEROMONE_STRENGTH
     
     def _is_in_nest_radius(self, col, row):
@@ -156,7 +154,7 @@ class Grid:
             self.pheromone_to_nest[grid_row][grid_col] = strength
         return True
     
-    def evaporate_pheromones(self):
+    def _evaporate_pheromones(self):
         """Apply evaporation to both pheromone grids."""
         for row in range(self.rows):
             for col in range(self.cols):
@@ -181,7 +179,7 @@ class Grid:
                 if self.pheromone_to_nest[row][col] < 0.01:
                     self.pheromone_to_nest[row][col] = 0
     
-    def diffuse_pheromones(self):
+    def _diffuse_pheromones(self):
         """
         Diffuse pheromones with distance-based weights.
         Closer neighbors get more pheromone than diagonals.
@@ -189,12 +187,11 @@ class Grid:
         if Config.DIFFUSION_RATE <= 0:
             return
         
-        # Weight matrix: orthogonal neighbors get more than diagonals
-        # Orthogonal: weight 2, Diagonal: weight 1
+        # Weight matrix
         WEIGHT_MATRIX = {
-            (-1, -1): 2, (0, -1): 1, (1, -1): 2,
+            (-1, -1): 0.71, (0, -1): 1, (1, -1): 0.71,
             (-1,  0): 1,             (1,  0): 1,
-            (-1,  1): 2, (0,  1): 1, (1,  1): 2
+            (-1,  1): 0.71, (0,  1): 1, (1,  1): 0.71
         }
         
         total_weight = sum(WEIGHT_MATRIX.values())
@@ -233,13 +230,9 @@ class Grid:
         self.pheromone_to_food = new_food
         self.pheromone_to_nest = new_nest
 
-    def _update_pheromones(self, should_evaporate=True, should_diffuse=True):
+    def update_pheromones(self, should_evaporate=True, should_diffuse=True):
         """
         Update all pheromone operations in one place.
-        
-        Args:
-            should_evaporate: If True, apply evaporation
-            should_diffuse: If True, apply diffusion
         """
         # Apply evaporation if needed
         if should_evaporate:
@@ -535,5 +528,9 @@ class Grid:
     def _in_bounds(self, grid_col, grid_row):
         """Check if grid coordinates are within bounds."""
         return (0 <= grid_row < self.rows and 0 <= grid_col < self.cols)
+    
 
+
+
+    
     

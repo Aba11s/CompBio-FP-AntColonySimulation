@@ -2,7 +2,7 @@ class Config:
     # ===== WINDOW & RENDERING =====
     SCREENWIDTH = 700
     SCREENHEIGHT = 700
-    FPS = 60
+    FPS = 30
     BACKGROUND_COLOR = (175, 150, 120)
     GRID_LINE_COLOR = (75, 75, 75)
     
@@ -21,7 +21,7 @@ class Config:
     # ===== FOOD SETTINGS =====
     FOOD_CLUSTER_RADIUS = 10
     FOOD_CLUSTER_DENSITY = 1
-    FOOD_PER_CELL = 999
+    FOOD_PER_CELL = 10
     FOOD_CLUSTER_INFLUENCE_RADIUS_MULT = 10
     FOOD_COLOR = (0, 180, 0)  # Green
     
