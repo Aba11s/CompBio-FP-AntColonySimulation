@@ -235,7 +235,7 @@ class AntSimulation:
         self.ph_counter += 1
         if self.ph_counter >= Config.EVAPORATION_INTERVAL:
             if self.movement_mode == "aco":
-                self.grid.evaporate_pheromones()
+                self.grid.update_pheromones(True, self.diffuse)
             self.ph_counter = 0
 
         
