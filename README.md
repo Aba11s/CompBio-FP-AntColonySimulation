@@ -5,22 +5,34 @@ Computational Biology Final Project
 Members:  
 B.Bellion Leander  
 C.Darren Muljono  
+
+Dependecnies/Libraries:
+Pygame
   
 How to run:  
 run main.py  
   
 Controls:  
-TAB - switch mode (editor/view)  
+TAB - toggle editor mode
+T - toggle tuning mode
   
 view mode:  
 SPACE - pause/unpause  
-'+' or '-' - increase/decrease max fps  
++ / - - increase/decrease max fps  
 A - Show/Hide ants  
 P - Show/Hide pheromones  
-G - Show/Hide grid  
+G - Show/Hide grid
+R - reset all ants to nest
   
 editor mode (Lclick to place, Rclick to erase):  
++ / - - increase/decrease brush size
 O - obstacles  
 P - pheromones  
 A - ants  
 F - food source   
+
+tuning mode (use + / - to control paremeter)
+1 - Alpha
+2 - Beta
+3 - Temperature
+4 - Exploration rate
